@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>贪吃蛇大作战</title>
+<style>
+  :root {
+    --bg: #000000;
+    --panel: #05070b;
+    --grid: #000000;
+    --gridline: #181c24;
+    --text: #e5e7eb;
+    --muted: #8b95a7;
+    --accent: #38bdf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .hidden { display: none !important; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; -webkit-tap-highlight-color: transparent;
+  }
+  .wrap { width: 100%; max-width: 560px; padding: 14px; }
+  .topbar { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .title { font-size: 19px; font-weight: 700; letter-spacing: 2px; }
+  .scores { display: flex; gap: 18px; font-variant-numeric: tabular-nums; }
+  .score-item { text-align: right; }
+  .score-label { font-size: 11px; color: var(--muted); }
+  .score-val { font-size: 18px; font-weight: 700; }
+  .board { position: relative; background: var(--panel); border-radius: 14px; padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  canvas { display: block; width: 100%; height: auto; border-radius: 8px; background: var(--grid); touch-action: none; cursor: crosshair; }
+  .rank {
+    position: absolute; top: 16px; right: 16px; background: rgba(11,14,20,.55);
+    border-radius: 10px; padding: 8px 10px; font-size: 11px; line-height: 1.7;
+    min-width: 118px; backdrop-filter: blur(3px); pointer-events: none;
+  }
+  .rank .rk-title { color: var(--muted); font-size: 10px; letter-spacing: 1px; margin-bottom: 3px; }
+  .rank .rk-row { display: flex; justify-content: space-between; gap: 8px; }
+  .rank .rk-me { color: var(--accent); font-weight: 700; }
+  .overlay {
+    position: absolute; inset: 8px; border-radius: 8px; background: rgba(11,14,20,.86);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; text-align: center; backdrop-filter: blur(2px);
+  }
+  .overlay.hidden { display: none; }
+  .overlay h2 { font-size: 24px; }
+  .overlay p { color: var(--muted); font-size: 13px; line-height: 1.7; max-width: 84%; }
+  button { border: none; background: var(--accent); color: #06121e; font-weight: 700; font-size: 15px; padding: 11px 28px; border-radius: 999px; cursor: pointer; transition: transform .08s ease; }
+  button:active { transform: scale(.96); }
+  .hint { margin-top: 10px; text-align: center; color: var(--muted); font-size: 12px; }
+
+  /* 顶部时间 / 金币 */
+  .score-val.time { color: #7dd3fc; }
+  .score-val.time.low { color: #f87171; }
+  .coinbox { display: flex; align-items: center; gap: 5px; justify-content: flex-end; }
+  .coinbox svg { display: block; }
+
+  /* 结算金币区 */
+  .reward { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .reward .big-coin { filter: drop-shadow(0 4px 12px rgba(250,204,21,.4)); }
+  .reward .earn { font-size: 26px; font-weight: 800; color: #facc15; }
+  .reward .earn small { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .reward .total { font-size: 12px; color: var(--muted); }
+  .ov-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  button.ghost { background: transparent; color: #facc15; border: 1px solid rgba(250,204,21,.5); }
+
+  /* 抽奖弹窗 */
+  .modal {
+    position: absolute; inset: 8px; border-radius: 8px; background: rgba(3,5,9,.94);
+    display: flex; flex-direction: column; padding: 16px; backdrop-filter: blur(3px);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .modal.hidden { display: none; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .modal-head h2 { font-size: 20px; }
+  .modal-head .bal { display: flex; align-items: center; gap: 5px; font-weight: 800; color: #facc15; font-size: 16px; }
+  .gacha-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 6px; }
+  .gacha-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px;
+    border-radius: 12px; border: 1px solid #222b3a; background: #0c111b; cursor: pointer;
+    transition: transform .08s ease, border-color .15s ease;
+  }
+  .gacha-btn:active { transform: scale(.95); }
+  .gacha-btn .g-tier { font-weight: 800; font-size: 14px; }
+  .gacha-btn .g-cost { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #facc15; font-weight: 700; }
+  .gacha-btn.t-common .g-tier { color: #93c5fd; }
+  .gacha-btn.t-rare .g-tier { color: #c084fc; }
+  .gacha-btn.t-legend .g-tier { color: #fb923c; }
+  .gacha-msg { min-height: 20px; text-align: center; font-size: 13px; color: #facc15; margin: 8px 0; font-weight: 600; }
+  .sec-title { font-size: 12px; color: var(--muted); letter-spacing: 1px; margin: 6px 0 8px; }
+  .skin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; max-height: 44vh; overflow-y: auto; padding-right: 4px; }
+  .skin-card {
+    border-radius: 12px; border: 1px solid #222b3a; background: #0c111b; padding: 10px;
+    cursor: pointer; transition: border-color .15s ease, transform .08s ease; position: relative;
+  }
+  .skin-card:active { transform: scale(.97); }
+  .skin-card.locked { opacity: .4; cursor: default; }
+  .skin-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .skin-card .preview { height: 26px; border-radius: 7px; margin-bottom: 7px; }
+  .skin-card .s-name { font-size: 13px; font-weight: 700; }
+  .skin-card .s-tier { font-size: 11px; color: var(--muted); }
+  .skin-card .s-flag { position: absolute; top: 8px; right: 8px; font-size: 10px; color: var(--accent); font-weight: 700; }
+  .modal .close-btn { align-self: center; }
+
+  /* 商店分页标签 */
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tab {
+    flex: 1; text-align: center; padding: 9px 4px; border-radius: 10px;
+    font-size: 13px; font-weight: 700; cursor: pointer; color: var(--muted);
+    border: 1px solid #222b3a; background: #0c111b; transition: all .15s ease;
+  }
+  .tab.active { color: #06121e; background: var(--accent); border-color: var(--accent); }
+
+  /* 表情兑换网格 */
+  .face-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; max-height: 50vh; overflow-y: auto; padding-right: 4px; }
+  .face-card {
+    border-radius: 12px; border: 1px solid #222b3a; background: #0c111b; padding: 10px;
+    cursor: pointer; transition: border-color .15s ease, transform .08s ease; position: relative; text-align: center;
+  }
+  .face-card:active { transform: scale(.97); }
+  .face-card.locked { opacity: .55; }
+  .face-card.active { border-color: #fb7185; box-shadow: 0 0 0 1px #fb7185 inset; }
+  .face-card .f-preview { font-size: 30px; line-height: 1.2; margin-bottom: 4px; }
+  .face-card .f-name { font-size: 12px; font-weight: 700; }
+  .face-card .f-price { font-size: 11px; color: #facc15; font-weight: 700; margin-top: 2px; }
+  .face-card .f-flag { position: absolute; top: 6px; right: 7px; font-size: 10px; color: #fb7185; font-weight: 700; }
+  .face-card .f-flag.owned { color: var(--accent); }
+
+  /* 无敌技能按钮 */
+  .power-btn {
+    position: absolute; left: 16px; bottom: 16px; z-index: 5;
+    background: linear-gradient(135deg,#fde047,#f59e0b); color: #3b2602;
+    border: 2px solid #fff7cc; box-shadow: 0 4px 16px rgba(250,204,21,.5);
+    font-size: 14px; font-weight: 800; padding: 10px 16px; border-radius: 999px;
+  }
+  .power-btn.active { animation: pulseShield .8s infinite alternate; }
+  .power-btn.hidden { display: none; }
+  @keyframes pulseShield { from { box-shadow: 0 4px 16px rgba(250,204,21,.5); } to { box-shadow: 0 4px 26px rgba(250,204,21,.95); } }
+
+  /* 第三个商店页：表情抽奖 */
+  .emote-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; max-height: 44vh; overflow-y: auto; padding-right: 4px; }
+  .emote-card { border-radius: 12px; border: 1px solid #222b3a; background: #0c111b; padding: 8px; text-align: center; position: relative; }
+  .emote-card .e-icon { width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); }
+  .emote-card .e-text { font-size: 11px; font-weight: 700; color: #fb7185; min-height: 14px; }
+  .emote-card .e-meta { font-size: 10px; color: var(--muted); }
+
+  /* 游戏内表情按钮 + 发送面板 */
+  .emote-btn {
+    position: absolute; right: 16px; bottom: 16px; z-index: 5;
+    background: linear-gradient(135deg,#f9a8d4,#fb7185); color: #3b0a1f;
+    border: 2px solid #ffe4f0; box-shadow: 0 4px 16px rgba(251,113,133,.5);
+    font-size: 14px; font-weight: 800; padding: 10px 14px; border-radius: 999px;
+  }
+  .emote-btn.hidden { display: none; }
+  .emote-panel {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: 66px; z-index: 6;
+    width: min(430px, 88%); max-height: 48%; background: rgba(6,9,15,.96);
+    border: 1px solid #2a3344; border-radius: 14px; padding: 10px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,.6);
+  }
+  .emote-panel.hidden { display: none; }
+  .emote-panel .ep-title { grid-column: 1/-1; font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 2px; }
+  .emote-pick { border-radius: 10px; border: 1px solid #2a3344; background: #0c111b; padding: 6px 2px; cursor: pointer; text-align: center; }
+  .emote-pick:active { transform: scale(.95); }
+  .emote-pick .p-icon { font-size: 20px; }
+  .emote-pick .p-text { font-size: 10px; color: #fb7185; font-weight: 700; min-height: 12px; }
+  .emote-pick.empty { grid-column: 1/-1; color: var(--muted); font-size: 12px; padding: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="title">贪吃蛇大作战</div>
+    <div class="scores">
+      <div class="score-item"><div class="score-label">长度</div><div class="score-val" id="score">0</div></div>
+      <div class="score-item"><div class="score-label">时间</div><div class="score-val time" id="time">1:00</div></div>
+      <div class="score-item"><div class="score-label">金币</div><div class="score-val coinbox" id="coinbox"><span id="coins">0</span></div></div>
+    </div>
+  </div>
+  <div class="board">
+    <canvas id="game" width="540" height="540"></canvas>
+    <div class="rank" id="rank"></div>
+    <button class="power-btn hidden" id="powerBtn">🛡️ 无敌</button>
+    <button class="emote-btn hidden" id="emoteBtn">💬 表情</button>
+    <div class="emote-panel hidden" id="emotePanel">
+      <div class="emote-palette" id="emotePalette"></div>
+    </div>
+    <div class="overlay" id="overlay">
+      <h2 id="ov-title">贪吃蛇大作战</h2>
+      <p id="ov-desc">每局限时 <b>1 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。去 <b>🎰皮肤抽奖</b> 抽皮肤 / 金币 / 无敌10秒，去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送的可爱表情（圆盘/齿轮、粉/金/蓝各种色）。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情嘲讽对手！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死。</p>
+      <div class="reward" id="reward" style="display:none">
+        <div class="big-coin" id="bigCoin"></div>
+        <div class="earn" id="earnVal">+0 <small>金币</small></div>
+        <div class="total" id="totalVal">当前长度 0 · 金币余额 0</div>
+      </div>
+      <div class="ov-btns">
+        <button id="startBtn">开始游戏</button>
+        <button id="gachaBtn" class="ghost" style="display:none">去抽奖 🎰</button>
+      </div>
+    </div>
+
+    <!-- 商店弹窗：皮肤抽奖 + 表情兑换 -->
+    <div class="modal hidden" id="gachaModal">
+      <div class="modal-head">
+        <h2>商店 🛍️</h2>
+        <div class="bal" id="gachaBal"></div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" data-tab="skin">🎰 皮肤抽奖</div>
+        <div class="tab" data-tab="face">😊 表情兑换</div>
+        <div class="tab" data-tab="emote">💬 表情抽奖</div>
+      </div>
+      <!-- 页面1：皮肤抽奖 -->
+      <div id="tabSkin">
+        <div class="gacha-row">
+          <div class="gacha-btn t-common" data-tier="common">
+            <div class="g-tier">普通</div><div class="g-cost"><span>5</span>💰</div>
+          </div>
+          <div class="gacha-btn t-rare" data-tier="rare">
+            <div class="g-tier">稀有</div><div class="g-cost"><span>10</span>💰</div>
+          </div>
+          <div class="gacha-btn t-legend" data-tier="legend">
+            <div class="g-tier">传说</div><div class="g-cost"><span>20</span>💰</div>
+          </div>
+        </div>
+        <div class="gacha-msg" id="gachaMsg">选档位抽奖：可能抽中皮肤 / 金币 / 无敌10秒，也可能什么都没有</div>
+        <div class="sec-title">我的皮肤（点击切换使用）</div>
+        <div class="skin-grid" id="skinGrid"></div>
+      </div>
+      <!-- 页面2：表情兑换 -->
+      <div id="tabFace" class="hidden">
+        <div class="gacha-msg" id="faceMsg">用金币解锁可爱表情，点击装备到你的蛇</div>
+        <div class="sec-title">我的表情（点击装备）</div>
+        <div class="face-grid" id="faceGrid"></div>
+      </div>
+      <!-- 页面3：表情抽奖（圆盘/齿轮 可发送） -->
+      <div id="tabEmote" class="hidden">
+        <div class="gacha-row">
+          <div class="gacha-btn emote-gacha t-common" data-tier="common">
+            <div class="g-tier">普通</div><div class="g-cost"><span>5</span>💰</div>
+          </div>
+          <div class="gacha-btn emote-gacha t-rare" data-tier="rare">
+            <div class="g-tier">稀有</div><div class="g-cost"><span>10</span>💰</div>
+          </div>
+          <div class="gacha-btn emote-gacha t-legend" data-tier="legend">
+            <div class="g-tier">传说</div><div class="g-cost"><span>20</span>💰</div>
+          </div>
+        </div>
+        <div class="gacha-msg" id="emoteMsg">花金币抽可爱表情：圆盘 / 齿轮载体，粉·金·蓝·绿·紫·彩虹各种色，还有「你很菜」嘲讽款！抽到进收藏，游戏里点 💬 发送。</div>
+        <div class="sec-title">我的表情收藏（游戏里可发送）</div>
+        <div class="emote-grid" id="emoteGrid"></div>
+      </div>
+      <button class="ghost close-btn" id="closeGacha">返回</button>
+    </div>
+  </div>
+  <div class="hint">鼠标移动 / 触摸拖动转向 · 按住加速 · 空格暂停</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const scoreEl = document.getElementById("score");
+  const rankEl = document.getElementById("rank");
+  const overlay = document.getElementById("overlay");
+  const ovTitle = document.getElementById("ov-title");
+  const ovDesc = document.getElementById("ov-desc");
+  const startBtn = document.getElementById("startBtn");
+
+  // ---- 世界参数 ----
+  const WORLD = { w: 3200, h: 3200 };
+  const GRID = 44;
+  const FOOD_COUNT = 620;       // 满地彩色球
+  const AI_COUNT = 14;          // 更多的蛇
+  const SPEED = 2.5;
+  const BOOST_MUL = 1.9;        // 冲刺倍率
+  const TURN = 0.09;
+  const BASE_R = 8;             // 初始身体半径
+  const MAX_R = 26;             // 变胖上限
+  const BASE_LEN = 40;
+  const GROW = 3;
+
+  // 新增 DOM
+  const timeEl = document.getElementById("time");
+  const coinsEl = document.getElementById("coins");
+  const coinboxEl = document.getElementById("coinbox");
+  const rewardEl = document.getElementById("reward");
+  const bigCoinEl = document.getElementById("bigCoin");
+  const earnValEl = document.getElementById("earnVal");
+  const totalValEl = document.getElementById("totalVal");
+  const gachaBtn = document.getElementById("gachaBtn");
+  const gachaModal = document.getElementById("gachaModal");
+  const gachaBal = document.getElementById("gachaBal");
+  const gachaMsg = document.getElementById("gachaMsg");
+  const skinGrid = document.getElementById("skinGrid");
+  const closeGacha = document.getElementById("closeGacha");
+
+  // ---- 局时 & 金币 ----
+  const ROUND_TIME = 60;        // 每局秒数
+  const TIER_COST = { common: 5, rare: 10, legend: 20 };
+
+  // 皮肤库：颜色(color) / 卡通人物(character) / 特殊(special)
+  // character 额外字段：ear(耳朵形状) hue/sat/light(身体配色) stripe/patch/glow
+  const SKIN_INFO = {
+    // —— 颜色皮肤 ——
+    rainbow:  { name: "彩虹流光", tier: "legend", type: "color", preview: "linear-gradient(90deg,#ff0000,#ff9900,#33cc33,#3399ff,#cc33ff)" },
+    neon:     { name: "霓虹",     tier: "legend", type: "color", preview: "linear-gradient(90deg,#22d3ee,#a855f7,#22d3ee)" },
+    aurora:   { name: "极光",     tier: "legend", type: "color", preview: "linear-gradient(90deg,#34d399,#22d3ee,#a78bfa)" },
+    galaxy:   { name: "星河",     tier: "legend", type: "color", preview: "linear-gradient(90deg,#6366f1,#a855f7,#ec4899)" },
+    gold:     { name: "流金",     tier: "legend", type: "color", preview: "linear-gradient(90deg,#fde047,#f59e0b,#b45309)" },
+    gradient: { name: "渐变",     tier: "common", type: "color", preview: "linear-gradient(90deg,#4ade80,#166534)" },
+    stripe:   { name: "条纹",     tier: "common", type: "color", preview: "repeating-linear-gradient(90deg,#f472b6 0 8px,#831843 8px 16px)" },
+    ocean:    { name: "海洋",     tier: "common", type: "color", preview: "linear-gradient(90deg,#22d3ee,#0e7490,#22d3ee)" },
+    mint:     { name: "薄荷",     tier: "common", type: "color", preview: "linear-gradient(90deg,#6ee7b7,#34d399,#a7f3d0)" },
+    peach:    { name: "蜜桃",     tier: "common", type: "color", preview: "linear-gradient(90deg,#fbcfe8,#f9a8d4,#fda4af)" },
+    retro:    { name: "复古波普", tier: "common", type: "color", preview: "repeating-linear-gradient(90deg,#f472b6 0 8px,#22d3ee 8px 16px)" },
+    candy:    { name: "糖果",     tier: "rare",   type: "color", preview: "repeating-linear-gradient(90deg,#fb7185 0 8px,#fdf2f8 8px 16px)" },
+    food:     { name: "食物同色", tier: "rare",   type: "color", preview: "linear-gradient(90deg,#f87171,#facc15,#4ade80,#38bdf8,#a78bfa)" },
+    lava:     { name: "熔岩",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#fde047,#f97316,#dc2626)" },
+    prism:    { name: "棱镜",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#fca5a5,#fcd34d,#86efac,#93c5fd,#d8b4fe)" },
+    // —— 卡通人物皮肤 ——
+    cat:    { name: "小猫",   tier: "rare",   type: "character", ear: "cat",      hue: 32,  sat: 70, preview: "linear-gradient(90deg,#fbbf24,#f59e0b,#b45309)" },
+    fox:    { name: "狐狸",   tier: "rare",   type: "character", ear: "fox",      hue: 20,  sat: 80, preview: "linear-gradient(90deg,#fb923c,#ea580c,#9a3412)" },
+    panda:  { name: "熊猫",   tier: "legend", type: "character", ear: "round",    hue: 0,   sat: 0,  light: 92, preview: "linear-gradient(90deg,#fafafa,#e5e7eb)" },
+    bunny:  { name: "兔子",   tier: "rare",   type: "character", ear: "long",     hue: 0,   sat: 18, light: 96, preview: "linear-gradient(90deg,#ffffff,#fce7f3)" },
+    bear:   { name: "小熊",   tier: "rare",   type: "character", ear: "round",    hue: 28,  sat: 55, preview: "linear-gradient(90deg,#d97706,#92400e)" },
+    frog:   { name: "青蛙",   tier: "common", type: "character", ear: "none",     hue: 110, sat: 60, preview: "linear-gradient(90deg,#86efac,#16a34a)" },
+    pig:    { name: "小猪",   tier: "common", type: "character", ear: "triangle", hue: 330, sat: 70, preview: "linear-gradient(90deg,#f9a8d4,#ec4899)" },
+    chick:  { name: "小鸡",   tier: "common", type: "character", ear: "crest",    hue: 48,  sat: 90, preview: "linear-gradient(90deg,#fde047,#facc15)" },
+    tiger:  { name: "老虎",   tier: "legend", type: "character", ear: "cat",      hue: 30,  sat: 85, stripe: true, preview: "linear-gradient(90deg,#fb923c,#f97316,#111111)" },
+    penguin:{ name: "企鹅",   tier: "rare",   type: "character", ear: "none",     hue: 215, sat: 40, preview: "linear-gradient(90deg,#374151,#111827,#ffffff)" },
+    cow:    { name: "奶牛",   tier: "common", type: "character", ear: "round",    hue: 0,   sat: 0,  light: 95, patch: true, preview: "linear-gradient(90deg,#ffffff 60%,#111111)" },
+    ghost:  { name: "幽灵",   tier: "rare",   type: "character", ear: "none",     hue: 220, sat: 15, light: 90, glow: true, preview: "linear-gradient(90deg,#e5e7eb,#cbd5e1)" },
+    dragon: { name: "小龙",   tier: "legend", type: "character", ear: "horns",    hue: 140, sat: 65, preview: "linear-gradient(90deg,#4ade80,#15803d)" },
+    // —— 特殊皮肤 ——
+    gear:      { name: "齿轮",   tier: "legend", type: "special", kind: "gear",      preview: "radial-gradient(circle,#d1d5db,#6b7280)" },
+    turntable: { name: "转盘",   tier: "legend", type: "special", kind: "turntable", preview: "radial-gradient(circle,#374151 38%,#f472b6 39%,#374151 60%)" },
+  };
+  const SKINS = Object.keys(SKIN_INFO);
+  const TIERS = { common: "普通", rare: "稀有", legend: "传说" };
+
+  // 可爱小表情（emoji 风），每条蛇随机分配一个
+  const FACES = ["normal", "happy", "wink", "star", "love", "cool", "surprised", "sleepy", "cry", "angry", "tongue", "blush"];
+
+  // 表情兑换信息：名字 / emoji 预览 / 价格（金币）
+  const FACE_INFO = {
+    normal:    { name: "普通",   icon: "🙂", price: 0 },
+    happy:     { name: "开心",   icon: "😊", price: 10 },
+    wink:      { name: "眨眼",   icon: "😉", price: 10 },
+    tongue:    { name: "吐舌",   icon: "😝", price: 10 },
+    blush:     { name: "害羞",   icon: "😳", price: 12 },
+    sleepy:    { name: "困",     icon: "😴", price: 12 },
+    star:      { name: "星星眼", icon: "🤩", price: 15 },
+    love:      { name: "爱心眼", icon: "😍", price: 15 },
+    cool:      { name: "墨镜",   icon: "😎", price: 15 },
+    surprised: { name: "震惊",   icon: "😲", price: 15 },
+    cry:       { name: "哭",     icon: "😭", price: 20 },
+    angry:     { name: "生气",   icon: "😠", price: 20 },
+  };
+
+  // 可发送的「可爱小表情」：圆盘 / 齿轮 两种载体，粉/金/蓝/绿/紫/彩虹 多种颜色
+  // emoji 图案 + text 嘲讽文字（如「你很菜」「我最强」），taunt 标记是否嘲讽款
+  const EMOTE_POOL = [
+    { emoji: "😎", text: "你很菜", taunt: true },
+    { emoji: "💪", text: "我最强", taunt: true },
+    { emoji: "👑", text: "冠军",   taunt: true },
+    { emoji: "😼", text: "菜",     taunt: true },
+    { emoji: "🐍", text: "我吃你", taunt: true },
+    { emoji: "🔥", text: "", taunt: false },
+    { emoji: "❤️", text: "", taunt: false },
+    { emoji: "⭐", text: "", taunt: false },
+    { emoji: "🤩", text: "", taunt: false },
+    { emoji: "😂", text: "", taunt: false },
+    { emoji: "💖", text: "", taunt: false },
+    { emoji: "🏆", text: "", taunt: false },
+    { emoji: "🚀", text: "", taunt: false },
+    { emoji: "✨", text: "", taunt: false },
+    { emoji: "🥳", text: "", taunt: false },
+    { emoji: "💀", text: "", taunt: false },
+  ];
+  const EMOTE_COLORS = [
+    { name: "粉",   hue: 330, sat: 82, light: 64 },
+    { name: "金",   hue: 45,  sat: 92, light: 56 },
+    { name: "蓝",   hue: 205, sat: 80, light: 60 },
+    { name: "绿",   hue: 150, sat: 65, light: 56 },
+    { name: "紫",   hue: 270, sat: 70, light: 64 },
+    { name: "彩虹", hue: -1 },
+  ];
+  const EMOTE_SHAPES = ["disk", "gear"];
+
+  // 持久化：金币 / 已解锁皮肤 / 当前皮肤
+  let coins = Number(localStorage.getItem("snake_coins") || 0);
+  let owned = JSON.parse(localStorage.getItem("snake_owned") || '["gradient"]');
+  let currentSkin = localStorage.getItem("snake_skin") || "gradient";
+  if (!owned.includes(currentSkin)) currentSkin = owned[0] || "gradient";
+  let ownedFaces = JSON.parse(localStorage.getItem("snake_faces") || '["normal"]');
+  let currentFace = localStorage.getItem("snake_face") || "normal";
+  if (!ownedFaces.includes(currentFace)) currentFace = "normal";
+  let powerups = JSON.parse(localStorage.getItem("snake_powerups") || '{"invincible":0}');
+  let invincibleUntil = 0; // 本局无敌截止时间戳
+  let ownedEmotes = JSON.parse(localStorage.getItem("snake_emotes") || "[]");
+
+  function saveWallet() {
+    localStorage.setItem("snake_coins", String(coins));
+    localStorage.setItem("snake_owned", JSON.stringify(owned));
+    localStorage.setItem("snake_skin", currentSkin);
+    localStorage.setItem("snake_faces", JSON.stringify(ownedFaces));
+    localStorage.setItem("snake_face", currentFace);
+    localStorage.setItem("snake_powerups", JSON.stringify(powerups));
+    localStorage.setItem("snake_emotes", JSON.stringify(ownedEmotes));
+  }
+
+  // 金色硬币刻小蛇的 SVG 图标
+  function coinSVG(size) {
+    const s = size;
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 48 48">' +
+      '<defs><radialGradient id="cg" cx="38%" cy="34%" r="70%">' +
+      '<stop offset="0%" stop-color="#fff6c9"/><stop offset="45%" stop-color="#fbcf3b"/>' +
+      '<stop offset="100%" stop-color="#c78a10"/></radialGradient></defs>' +
+      '<circle cx="24" cy="24" r="22" fill="url(#cg)" stroke="#9a6b08" stroke-width="2"/>' +
+      '<circle cx="24" cy="24" r="17" fill="none" stroke="#e0a92a" stroke-width="1.5" opacity=".7"/>' +
+      // 小蛇：绿色 S 形身体
+      '<path d="M15 31 C15 25 22 26 22 22 C22 18 15 19 16 14" fill="none" stroke="#2f9e44" ' +
+      'stroke-width="4.2" stroke-linecap="round"/>' +
+      // 蛇头
+      '<circle cx="16" cy="14" r="3.4" fill="#37b24d"/>' +
+      '<circle cx="17.2" cy="13" r="1" fill="#0b0e14"/>' +
+      // 食物点
+      '<circle cx="31" cy="30" r="2.6" fill="#f03e3e"/></svg>';
+  }
+
+  let snakes, foods, cam, running, paused, player, alive, loopId, floatEmotes = [];
+  let pointerAngle = null, boosting = false, frame = 0;
+  let roundEndAt = 0, pauseStart = 0;
+  let best = Number(localStorage.getItem("slither_best2") || 0);
+
+  // 顶部金币图标 + 数值
+  function refreshCoinHUD() {
+    coinsEl.textContent = coins;
+    if (!coinboxEl.querySelector("svg")) coinboxEl.insertAdjacentHTML("afterbegin", coinSVG(18));
+  }
+  refreshCoinHUD();
+
+  const rand = (n) => Math.random() * n;
+  const randInt = (n) => Math.floor(Math.random() * n);
+  const pick = (a) => a[randInt(a.length)];
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  // 蛇半径随长度增长（变胖）
+  function radiusOf(s) {
+    return clamp(BASE_R + Math.sqrt(s.score) * 1.15, BASE_R, MAX_R);
+  }
+
+  function makeSnake(x, y, angle, hue, isAI) {
+    const pts = [];
+    for (let i = 0; i < BASE_LEN; i++) {
+      pts.push({ x: x - Math.cos(angle) * i * SPEED, y: y - Math.sin(angle) * i * SPEED });
+    }
+    return {
+      pts, angle,
+      speed: SPEED * (isAI ? (0.85 + Math.random() * 0.12) : 1),
+      hue, skin: pick(SKINS), face: pick(FACES),
+      isAI, alive: true, score: isAI ? randInt(40) : 0,
+      desired: angle, wander: 0,
+      name: isAI ? "蛇" + (1000 + randInt(9000)) : "你",
+    };
+  }
+
+  function newFood(x, y, r, hue) {
+    return {
+      x: x != null ? x : rand(WORLD.w),
+      y: y != null ? y : rand(WORLD.h),
+      r: r != null ? r : 4 + Math.random() * 4,
+      hue: hue != null ? hue : randInt(360),
+      ph: rand(Math.PI * 2),
+    };
+  }
+
+  function spawnFood(n) { for (let i = 0; i < n; i++) foods.push(newFood()); }
+
+  function spawnAI() {
+    let x, y, d;
+    do {
+      x = rand(WORLD.w); y = rand(WORLD.h);
+      d = player ? dist({ x, y }, player.pts[0]) : 9999;
+    } while (d < 480);
+    return makeSnake(x, y, rand(Math.PI * 2), randInt(360), true);
+  }
+
+  function reset() {
+    foods = []; spawnFood(FOOD_COUNT);
+    player = makeSnake(WORLD.w / 2, WORLD.h / 2, 0, randInt(360), false);
+    player.skin = currentSkin;     // 使用当前选中皮肤
+    player.face = currentFace;     // 使用当前选中表情
+    invincibleUntil = 0;           // 重置无敌状态
+    floatEmotes = [];              // 清空场上表情
+    snakes = [player];
+    for (let i = 0; i < AI_COUNT; i++) snakes.push(spawnAI());
+    cam = { x: player.pts[0].x - canvas.width / 2, y: player.pts[0].y - canvas.height / 2 };
+    alive = true; paused = false; boosting = false;
+    scoreEl.textContent = 0;
+    roundEndAt = Date.now() + ROUND_TIME * 1000; // 启动本局 1 分钟倒计时
+  }
+
+  function turnTo(s, target, maxTurn) {
+    let diff = target - s.angle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    s.angle += clamp(diff, -maxTurn, maxTurn);
+  }
+
+  function moveSnake(s, boost) {
+    const head = s.pts[0];
+    const sp = s.speed * (boost ? BOOST_MUL : 1);
+    s.pts.unshift({ x: head.x + Math.cos(s.angle) * sp, y: head.y + Math.sin(s.angle) * sp });
+    const targetLen = BASE_LEN + Math.floor(s.score) * GROW;
+    while (s.pts.length > targetLen) s.pts.pop();
+    // 冲刺消耗长度并掉落食物
+    if (boost && s.score > 5 && frame % 6 === 0) {
+      s.score -= 1;
+      const tail = s.pts[s.pts.length - 1];
+      foods.push(newFood(tail.x, tail.y, 4 + Math.random() * 3, s.hue));
+      if (s === player) scoreEl.textContent = s.score;
+    }
+  }
+
+  function aiThink(s) {
+    const head = s.pts[0];
+    const margin = 180;
+    if (head.x < margin || head.x > WORLD.w - margin || head.y < margin || head.y > WORLD.h - margin) {
+      s.desired = Math.atan2(WORLD.h / 2 - head.y, WORLD.w / 2 - head.x);
+      return;
+    }
+    let bestF = null, bestD = 420;
+    for (let i = 0; i < foods.length; i += 2) {
+      const d = dist(head, foods[i]);
+      if (d < bestD) { bestD = d; bestF = foods[i]; }
+    }
+    let avoid = null;
+    const look = 100 + radiusOf(s) * 2;
+    const fx = head.x + Math.cos(s.angle) * look;
+    const fy = head.y + Math.sin(s.angle) * look;
+    for (const o of snakes) {
+      if (o === s || !o.alive) continue;
+      const or = radiusOf(o);
+      for (let i = 0; i < o.pts.length; i += 4) {
+        if (Math.hypot(o.pts[i].x - fx, o.pts[i].y - fy) < or + radiusOf(s) + 6) { avoid = o.pts[i]; break; }
+      }
+      if (avoid) break;
+    }
+    if (avoid) {
+      const left = s.angle - 1.3, right = s.angle + 1.3;
+      const dl = Math.hypot(fx - (head.x + Math.cos(left) * look), fy - (head.y + Math.sin(left) * look));
+      const dr = Math.hypot(fx - (head.x + Math.cos(right) * look), fy - (head.y + Math.sin(right) * look));
+      s.desired = dl < dr ? left : right;
+      return;
+    }
+    if (bestF) s.desired = Math.atan2(bestF.y - head.y, bestF.x - head.x);
+    else { s.wander += (Math.random() - 0.5) * 0.3; s.desired = s.angle + s.wander; }
+  }
+
+  function eat(s) {
+    const head = s.pts[0];
+    const r = radiusOf(s) + 6;
+    for (let i = foods.length - 1; i >= 0; i--) {
+      const f = foods[i];
+      if (Math.abs(f.x - head.x) > r + f.r || Math.abs(f.y - head.y) > r + f.r) continue;
+      if (dist(head, f) < r + f.r) {
+        s.score += 1;
+        foods[i] = foods[foods.length - 1]; foods.pop();
+        if (s === player) scoreEl.textContent = s.score;
+      }
+    }
+  }
+
+  function killToFood(s) {
+    const step = Math.max(2, Math.floor(radiusOf(s) / 4));
+    for (let i = 0; i < s.pts.length; i += step) {
+      foods.push(newFood(s.pts[i].x + rand(10) - 5, s.pts[i].y + rand(10) - 5, 5 + Math.random() * 4, s.hue));
+    }
+  }
+
+  function step() {
+    frame++;
+    if (alive && Date.now() >= roundEndAt) return finishRound("时间到，成功存活");
+    if (pointerAngle !== null && alive) turnTo(player, pointerAngle, TURN);
+
+    for (const s of snakes) {
+      if (!s.alive) continue;
+      if (s.isAI) { aiThink(s); turnTo(s, s.desired, TURN * 0.92); moveSnake(s, false); }
+      else moveSnake(s, boosting && s.score > 5);
+      eat(s);
+    }
+
+    for (const a of snakes) {
+      if (!a.alive) continue;
+      const head = a.pts[0], ar = radiusOf(a);
+      if (head.x < 0 || head.x > WORLD.w || head.y < 0 || head.y > WORLD.h) {
+        a.alive = false;
+        if (a === player) return finishRound("你撞上了边界");
+        killToFood(a); continue;
+      }
+      for (const b of snakes) {
+        if (b === a || !b.alive) continue;
+        const thr = ar + radiusOf(b) * 0.6;
+        let hit = false;
+        for (let i = 0; i < b.pts.length; i += 2) {
+          if (Math.abs(b.pts[i].x - head.x) > thr || Math.abs(b.pts[i].y - head.y) > thr) continue;
+          if (dist(head, b.pts[i]) < thr) { hit = true; break; }
+        }
+        if (!hit) continue;
+        // 无敌10秒：被你撞到的蛇死，你活
+        if (a === player && Date.now() < invincibleUntil) {
+          b.alive = false; killToFood(b); continue;
+        }
+        a.alive = false;
+        if (a === player) return finishRound("你被对手淘汰了");
+        killToFood(a); break;
+      }
+    }
+
+    const aliveAI = snakes.filter(s => s.isAI && s.alive).length;
+    for (let i = aliveAI; i < AI_COUNT; i++) snakes.push(spawnAI());
+    snakes = snakes.filter(s => s.alive || s === player);
+
+    if (foods.length < FOOD_COUNT) spawnFood(FOOD_COUNT - foods.length);
+    else if (foods.length > FOOD_COUNT + 700) foods.splice(0, foods.length - (FOOD_COUNT + 700));
+
+    // AI 偶尔发送表情，让世界更热闹
+    if (Math.random() < 0.012) {
+      const aliveAIs = snakes.filter(s => s.isAI && s.alive);
+      if (aliveAIs.length) {
+        const a = pick(aliveAIs);
+        const tpl = pick(EMOTE_POOL);
+        const color = pick(EMOTE_COLORS);
+        sendEmote(a, { emoji: tpl.emoji, text: tpl.text, shape: pick(EMOTE_SHAPES), color: color.name, taunt: tpl.taunt });
+      }
+    }
+    // 清理过期的漂浮表情
+    const now = Date.now();
+    for (let i = floatEmotes.length - 1; i >= 0; i--) if (now - floatEmotes[i].born > 2600) floatEmotes.splice(i, 1);
+
+    cam.x += (player.pts[0].x - canvas.width / 2 - cam.x) * 0.18;
+    cam.y += (player.pts[0].y - canvas.height / 2 - cam.y) * 0.18;
+  }
+
+  function coinsFromScore(score) {
+    return Math.max(1, Math.round(score)); // 金币 = 长度，1:1（你多长就给多少）
+  }
+
+  function finishRound(reason) {
+    alive = false; running = false;
+    powerBtn.classList.add("hidden");
+    emoteBtn.classList.add("hidden");
+    emotePanel.classList.add("hidden");
+    const len = player.score;
+    const earned = coinsFromScore(len);
+    coins += earned;
+    if (len > best) { best = len; localStorage.setItem("slither_best2", String(len)); }
+    saveWallet();
+    refreshCoinHUD();
+
+    const isNew = len >= best && len > 0;
+    ovTitle.textContent = "本局结束";
+    ovDesc.textContent = reason + "！你的长度 " + len + (isNew ? " · 新纪录 🏆" : "");
+    bigCoinEl.innerHTML = coinSVG(64);
+    earnValEl.innerHTML = "+" + earned + " <small>金币</small>";
+    totalValEl.textContent = "长度 " + len + " → 金币余额 " + coins;
+    rewardEl.style.display = "flex";
+    startBtn.textContent = "再来一局";
+    gachaBtn.style.display = "inline-block";
+    overlay.classList.remove("hidden");
+  }
+
+  // ---- 绘制 ----
+  function draw() {
+    ctx.fillStyle = getCss("--grid");
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(-cam.x, -cam.y);
+    drawGrid(); drawBorder(); drawFood();
+    // 死的先画，玩家最后画在最上
+    const ordered = snakes.filter(s => s.alive).sort((a, b) => (a === player ? 1 : 0) - (b === player ? 1 : 0));
+    for (const s of ordered) drawSnake(s);
+    for (const fe of floatEmotes) drawFloatEmote(fe);
+    ctx.restore();
+    drawRank();
+    updateTimeHUD();
+    refreshPowerBtn();
+    refreshEmoteBtn();
+  }
+
+  function updateTimeHUD() {
+    if (!running || !alive) return;
+    const remain = Math.max(0, Math.ceil((roundEndAt - Date.now()) / 1000));
+    const m = Math.floor(remain / 60), s = remain % 60;
+    timeEl.textContent = m + ":" + String(s).padStart(2, "0");
+    timeEl.classList.toggle("low", remain <= 10);
+  }
+
+  function drawGrid() {
+    const x0 = Math.max(0, Math.floor(cam.x / GRID) * GRID);
+    const x1 = Math.min(WORLD.w, cam.x + canvas.width);
+    const y0 = Math.max(0, Math.floor(cam.y / GRID) * GRID);
+    const y1 = Math.min(WORLD.h, cam.y + canvas.height);
+    ctx.strokeStyle = getCss("--gridline");
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = x0; x <= x1; x += GRID) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+    for (let y = y0; y <= y1; y += GRID) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+    ctx.stroke();
+    ctx.fillStyle = "rgba(120,140,170,.16)";
+    for (let x = x0; x <= x1; x += GRID)
+      for (let y = y0; y <= y1; y += GRID) { ctx.beginPath(); ctx.arc(x, y, 1.3, 0, Math.PI * 2); ctx.fill(); }
+  }
+
+  function drawBorder() {
+    ctx.strokeStyle = "rgba(248,113,113,.55)";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(0, 0, WORLD.w, WORLD.h);
+  }
+
+  function drawFood() {
+    const t = frame * 0.05;
+    for (const f of foods) {
+      const pulse = 0.8 + Math.sin(t + f.ph) * 0.22;
+      const rr = f.r * pulse;
+      ctx.beginPath();
+      ctx.fillStyle = "hsl(" + f.hue + ",85%,60%)";
+      ctx.shadowColor = "hsl(" + f.hue + ",90%,60%)";
+      ctx.shadowBlur = 8;
+      ctx.arc(f.x, f.y, rr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(255,255,255,.4)";
+      ctx.arc(f.x - rr * 0.3, f.y - rr * 0.3, rr * 0.38, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 身体配色（按皮肤类型）
+  function bodyColor(s, seg, i, n) {
+    const c = SKIN_INFO[s.skin];
+    if (c.type === "character") {
+      const l = (c.light != null ? c.light : 60) - i / n * 20;
+      return "hsl(" + c.hue + "," + (c.sat != null ? c.sat : 65) + "%," + l + "%)";
+    }
+    switch (s.skin) {
+      case "rainbow":  return "hsl(" + ((seg * 8 + frame * 2) % 360) + ",80%,58%)";
+      case "stripe":   return (Math.floor(seg / 3) % 2 === 0) ? "hsl(" + s.hue + ",72%,55%)" : "hsl(" + s.hue + ",70%,32%)";
+      case "gradient": return "hsl(" + s.hue + "," + (75 - i / n * 40) + "%," + (60 - i / n * 28) + "%)";
+      case "neon":     return (Math.floor(seg / 2) % 2 === 0) ? "hsl(" + s.hue + ",95%,62%)" : "hsl(" + ((s.hue + 40) % 360) + ",95%,58%)";
+      case "candy":    return (Math.floor(seg / 2) % 2 === 0) ? "hsl(" + s.hue + ",85%,66%)" : "#fdf2f8";
+      case "ocean":    return "hsl(" + (190 + Math.sin(seg * 0.2) * 30) + ",78%," + (52 + Math.sin(seg * 0.3) * 12) + "%)";
+      case "food":     return "hsl(" + ((seg * 47 + s.hue) % 360) + ",88%,62%)";
+      case "aurora":   return "hsl(" + (150 + Math.sin(seg * 0.15 + frame * 0.03) * 70) + ",75%," + (55 + Math.sin(seg * 0.1) * 10) + "%)";
+      case "galaxy":   return "hsl(" + (260 + Math.sin(seg * 0.1) * 60) + ",70%," + (48 + Math.sin(seg * 0.2 + frame * 0.02) * 16) + "%)";
+      case "lava":     return "hsl(" + (12 + Math.sin(seg * 0.2) * 28) + ",90%," + (50 + Math.sin(seg * 0.15) * 12) + "%)";
+      case "mint":     return "hsl(" + (150 + (seg % 2 ? 12 : -8)) + ",55%," + (74 - i / n * 14) + "%)";
+      case "peach":    return "hsl(" + (340 + (seg % 2 ? 18 : -10)) + ",80%," + (80 - i / n * 14) + "%)";
+      case "gold":     return "hsl(" + (45 + Math.sin(seg * 0.1) * 8) + ",85%," + (55 + Math.sin(seg * 0.2) * 12) + "%)";
+      case "prism":    return "hsl(" + ((seg * 30) % 360) + ",70%," + (82 - i / n * 18) + "%)";
+      case "retro":    return (Math.floor(seg / 3) % 2 === 0) ? "hsl(320,80%,62%)" : "hsl(190,80%,58%)";
+      case "tiger":    return (Math.floor(seg / 2) % 2 === 0) ? "hsl(30,85%,55%)" : "hsl(30,85%,35%)";
+      default:         return "hsl(" + s.hue + ",70%,52%)";
+    }
+  }
+
+  // 齿轮段
+  function drawGear(x, y, R, ang, hue) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = "hsl(" + hue + ",22%,60%)";
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "hsl(" + hue + ",22%,46%)";
+    for (let k = 0; k < 8; k++) {
+      ctx.save(); ctx.rotate(k / 8 * Math.PI * 2);
+      ctx.fillRect(R * 0.78, -R * 0.2, R * 0.42, R * 0.4);
+      ctx.restore();
+    }
+    ctx.fillStyle = "hsl(" + hue + ",20%,38%)";
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.34, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#0b0e14";
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.14, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // 转盘 / 唱片段
+  function drawDisc(x, y, R, hue) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = "#1f2937";
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.10)"; ctx.lineWidth = R * 0.16;
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.62, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.4, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "hsl(" + hue + ",80%,58%)";
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#0b0e14";
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStar(x, y, r, color) {
+    ctx.fillStyle = color; ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const rr = i % 2 ? r * 0.45 : r;
+      const a = -Math.PI / 2 + i * Math.PI / 5;
+      const xx = x + Math.cos(a) * rr, yy = y + Math.sin(a) * rr;
+      i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  function drawHeart(x, y, r, color) {
+    ctx.fillStyle = color; ctx.beginPath();
+    ctx.moveTo(x, y + r * 0.3);
+    ctx.bezierCurveTo(x + r, y - r * 0.5, x + r * 0.5, y - r, x, y - r * 0.3);
+    ctx.bezierCurveTo(x - r * 0.5, y - r, x - r, y - r * 0.5, x, y + r * 0.3);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function earColorFor(id) {
+    return ({ panda: "#111827", bunny: "#ffffff", bear: "#92400e", cow: "#f3f4f6",
+      fox: "#ea580c", cat: "#f59e0b", pig: "#f9a8d4", tiger: "#ea580c", dragon: "#15803d" })[id] || "#9ca3af";
+  }
+
+  // 卡通耳朵（按头部朝向旋转）
+  function drawEars(s, R, head) {
+    const c = SKIN_INFO[s.skin];
+    const sh = c.ear;
+    if (!sh || sh === "none") return;
+    ctx.save(); ctx.translate(head.x, head.y); ctx.rotate(s.angle);
+    const col = earColorFor(s.skin);
+    for (const sgn of [-1, 1]) {
+      if (sh === "cat" || sh === "fox") {
+        ctx.fillStyle = col; ctx.beginPath();
+        ctx.moveTo(sgn * R * 0.5, -R * 0.95); ctx.lineTo(sgn * R * 0.95, -R * 0.1); ctx.lineTo(sgn * R * 0.05, -R * 0.1);
+        ctx.closePath(); ctx.fill();
+        if (sh === "cat") { ctx.fillStyle = "rgba(255,170,200,.92)"; ctx.beginPath();
+          ctx.moveTo(sgn * R * 0.5, -R * 0.55); ctx.lineTo(sgn * R * 0.32, -R * 0.1); ctx.lineTo(sgn * R * 0.68, -R * 0.1); ctx.closePath(); ctx.fill(); }
+      } else if (sh === "round") {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(sgn * R * 0.62, -R * 0.6, R * 0.42, 0, 7); ctx.fill();
+        if (s.skin === "panda") { ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.arc(sgn * R * 0.62, -R * 0.6, R * 0.24, 0, 7); ctx.fill(); }
+      } else if (sh === "long") {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(sgn * R * 0.45, -R * 0.95, R * 0.26, R * 0.7, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = "rgba(255,170,200,.92)"; ctx.beginPath(); ctx.ellipse(sgn * R * 0.45, -R * 0.9, R * 0.12, R * 0.48, 0, 0, 7); ctx.fill();
+      } else if (sh === "triangle") {
+        ctx.fillStyle = col; ctx.beginPath();
+        ctx.moveTo(sgn * R * 0.5, -R * 0.7); ctx.lineTo(sgn * R * 0.95, -R * 0.05); ctx.lineTo(sgn * R * 0.2, -R * 0.05);
+        ctx.closePath(); ctx.fill();
+      } else if (sh === "horns") {
+        ctx.fillStyle = "#fde68a"; ctx.beginPath();
+        ctx.moveTo(sgn * R * 0.5, -R * 0.6); ctx.lineTo(sgn * R * 0.85, -R * 0.2); ctx.lineTo(sgn * R * 0.3, -R * 0.2);
+        ctx.closePath(); ctx.fill();
+      } else if (sh === "crest") {
+        ctx.fillStyle = "#f97316"; ctx.beginPath();
+        ctx.arc(sgn * R * 0.4, -R * 0.7, R * 0.2, 0, 7); ctx.arc(sgn * R * 0.4 + R * 0.3, -R * 0.55, R * 0.15, 0, 7); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // 可爱小表情
+  function drawFace(s, R, head) {
+    const ex = Math.cos(s.angle), ey = Math.sin(s.angle);
+    const px = -ey, py = ex;
+    const eo = R * 0.52, ef = R * 0.34, eR = R * 0.34;
+    const eye = (sgn) => [head.x + ex * ef + px * eo * sgn, head.y + ey * ef + py * eo * sgn];
+    const roundEye = (x, y) => {
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, eR, 0, 7); ctx.fill();
+      ctx.fillStyle = "#0b0e14"; ctx.beginPath(); ctx.arc(x + ex * eR * 0.35, y + ey * eR * 0.35, eR * 0.55, 0, 7); ctx.fill();
+    };
+    const arcEye = (x, y, up) => {
+      ctx.strokeStyle = "#0b0e14"; ctx.lineWidth = R * 0.13; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(x, y + eR * 0.2, eR * 0.8, up ? 1.1 * Math.PI : 0, up ? 1.9 * Math.PI : Math.PI); ctx.stroke();
+    };
+    const mouth = (up) => {
+      ctx.strokeStyle = "#0b0e14"; ctx.lineWidth = R * 0.12; ctx.lineCap = "round";
+      const mx = head.x + ex * R * 0.15, my = head.y + ey * R * 0.15;
+      ctx.beginPath();
+      if (up) ctx.arc(mx, my - R * 0.05, R * 0.28, 0.15 * Math.PI, 0.85 * Math.PI);
+      else ctx.arc(mx, my + R * 0.15, R * 0.28, 1.15 * Math.PI, 1.85 * Math.PI);
+      ctx.stroke();
+    };
+    switch (s.face) {
+      case "happy": { for (const sgn of [-1, 1]) { const [x, y] = eye(sgn); arcEye(x, y, true); } mouth(true); break; }
+      case "wink": { const [x1, y1] = eye(-1), [x2, y2] = eye(1); roundEye(x1, y1); arcEye(x2, y2, true); mouth(true); break; }
+      case "star": { for (const sgn of [-1, 1]) { const [x, y] = eye(sgn); drawStar(x, y, eR * 1.1, "#fde047"); } mouth(true); break; }
+      case "love": { for (const sgn of [-1, 1]) { const [x, y] = eye(sgn); drawHeart(x, y, eR * 1.1, "#fb7185"); } mouth(true); break; }
+      case "cool": {
+        const [x1, y1] = eye(-1), [x2, y2] = eye(1);
+        ctx.fillStyle = "#0b0e14";
+        ctx.fillRect(x1 - eR, y1 - eR * 0.7, eR * 2, eR * 1.3);
+        ctx.fillRect(x2 - eR, y2 - eR * 0.7, eR * 2, eR * 1.3);
+        ctx.fillRect((x1 + x2) / 2 - eR * 0.3, y1, eR * 0.6, eR * 0.4);
+        mouth(true); break;
+      }
+      case "surprised": {
+        for (const sgn of [-1, 1]) { const [x, y] = eye(sgn); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, eR * 1.1, 0, 7); ctx.fill(); ctx.fillStyle = "#0b0e14"; ctx.beginPath(); ctx.arc(x, y, eR * 0.6, 0, 7); ctx.fill(); }
+        ctx.strokeStyle = "#0b0e14"; ctx.lineWidth = R * 0.1; ctx.beginPath(); ctx.arc(head.x + ex * R * 0.2, head.y + ey * R * 0.2, R * 0.16, 0, 7); ctx.stroke(); break;
+      }
+      case "sleepy": { ctx.strokeStyle = "#0b0e14"; ctx.lineWidth = R * 0.13; ctx.lineCap = "round"; for (const sgn of [-1, 1]) { const [x, y] = eye(sgn); ctx.beginPath(); ctx.moveTo(x - eR, y); ctx.lineTo(x + eR, y); ctx.stroke(); } mouth(false); break; }
+      case "cry": {
+        const [x1, y1] = eye(-1), [x2, y2] = eye(1); roundEye(x1, y1); roundEye(x2, y2);
+        ctx.fillStyle = "#60a5fa";
+        ctx.beginPath(); ctx.arc(x1 - ex * eR * 0.3, y1 + ey * eR * 0.3 + R * 0.2, eR * 0.3, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(x2 - ex * eR * 0.3, y2 + ey * eR * 0.3 + R * 0.2, eR * 0.3, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#0b0e14"; ctx.lineWidth = R * 0.1; ctx.beginPath(); ctx.arc(head.x + ex * R * 0.15, head.y + ey * R * 0.15, R * 0.22, 1.1 * Math.PI, 1.9 * Math.PI); ctx.stroke(); break;
+      }
+      case "angry": {
+        ctx.strokeStyle = "#0b0e14"; ctx.lineWidth = R * 0.13; ctx.lineCap = "round";
+        const [x1, y1] = eye(-1), [x2, y2] = eye(1);
+        ctx.beginPath(); ctx.moveTo(x1 - eR, y1 - eR * 0.5); ctx.lineTo(x1 + eR * 0.6, y1 + eR * 0.1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x2 + eR, y2 - eR * 0.5); ctx.lineTo(x2 - eR * 0.6, y2 + eR * 0.1); ctx.stroke();
+        roundEye(x1, y1); roundEye(x2, y2); mouth(false); break;
+      }
+      case "tongue": {
+        const [x1, y1] = eye(-1), [x2, y2] = eye(1); roundEye(x1, y1); roundEye(x2, y2);
+        ctx.fillStyle = "#fb7185"; ctx.beginPath(); ctx.arc(head.x + ex * R * 0.15, head.y + ey * R * 0.15 + R * 0.15, R * 0.2, 0, Math.PI); ctx.fill(); break;
+      }
+      case "blush": {
+        const [x1, y1] = eye(-1), [x2, y2] = eye(1); roundEye(x1, y1); roundEye(x2, y2);
+        ctx.fillStyle = "rgba(251,113,133,.55)";
+        ctx.beginPath(); ctx.arc(head.x + ex * R * 0.1 + px * R * 0.7, head.y + ey * R * 0.1 + py * R * 0.7, eR * 0.7, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(head.x + ex * R * 0.1 - px * R * 0.7, head.y + ey * R * 0.1 - py * R * 0.7, eR * 0.7, 0, 7); ctx.fill();
+        mouth(true); break;
+      }
+      default: { const [x1, y1] = eye(-1), [x2, y2] = eye(1); roundEye(x1, y1); roundEye(x2, y2); }
+    }
+  }
+
+  // 主绘制：身体 + 耳朵 + 表情
+  function drawSnake(s) {
+    const R = radiusOf(s);
+    const pts = s.pts;
+    const info = SKIN_INFO[s.skin];
+    const isSpecial = info.type === "special";
+    const head = pts[0];
+    ctx.save();
+    if (isSpecial) ctx.shadowBlur = 0;
+    else { ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 8; }
+
+    if (isSpecial) {
+      for (let i = pts.length - 1; i >= 0; i--) {
+        if (info.kind === "gear") drawGear(pts[i].x, pts[i].y, R * 0.92, i * 0.5 + frame * 0.04, s.hue);
+        else drawDisc(pts[i].x, pts[i].y, R * 0.92, s.hue);
+      }
+    } else {
+      for (let i = pts.length - 1; i >= 0; i--) {
+        ctx.shadowBlur = i === pts.length - 1 ? 8 : 0;
+        ctx.beginPath();
+        ctx.fillStyle = bodyColor(s, i, i, pts.length);
+        ctx.arc(pts[i].x, pts[i].y, R, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    if (!isSpecial) {
+      ctx.strokeStyle = "rgba(255,255,255,.22)";
+      ctx.lineWidth = R * 0.5;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(head.x, head.y);
+      for (let i = 1; i < Math.min(pts.length, 22); i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    }
+
+    if (info.type === "character") drawEars(s, R, head);
+    drawFace(s, R, head);
+
+    // 无敌光环
+    if (s === player && Date.now() < invincibleUntil) {
+      const pulse = 0.55 + Math.sin(frame * 0.25) * 0.3;
+      ctx.save();
+      ctx.strokeStyle = "rgba(250,204,21," + pulse + ")";
+      ctx.lineWidth = R * 0.7;
+      ctx.shadowColor = "rgba(250,204,21,.9)"; ctx.shadowBlur = 18;
+      ctx.beginPath(); ctx.arc(head.x, head.y, R * 1.7, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // 圆角矩形辅助
+  function rrect(x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+    else { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  }
+
+  function emoteColorOf(name) { return EMOTE_COLORS.find(c => c.name === name) || EMOTE_COLORS[0]; }
+
+  // 发送一个漂浮表情（跟随发送者蛇头上方，逐渐上升淡出）
+  function sendEmote(sn, em) {
+    if (!sn || !sn.alive) return;
+    floatEmotes.push({
+      owner: sn, x0: sn.pts[0].x, y0: sn.pts[0].y,
+      emoji: em.emoji, text: em.text || "", shape: em.shape, color: em.color, taunt: em.taunt,
+      born: Date.now(),
+    });
+    if (floatEmotes.length > 48) floatEmotes.shift();
+  }
+
+  // 绘制单个漂浮表情（圆盘 / 齿轮 载体 + emoji + 嘲讽文字）
+  function drawFloatEmote(fe) {
+    const age = Date.now() - fe.born;
+    const life = 2600;
+    if (age > life) return;
+    const t = age / life;
+    const base = (fe.owner && fe.owner.alive) ? fe.owner.pts[0] : { x: fe.x0, y: fe.y0 };
+    const R = fe.owner ? radiusOf(fe.owner) : 14;
+    const rise = Math.min(46, age * 0.03);
+    const x = base.x, y = base.y - R * 1.5 - rise;
+    const scale = 0.5 + Math.min(1, t * 7) * 0.5;
+    const alpha = t > 0.78 ? (1 - (t - 0.78) / 0.22) : 1;
+    const col = emoteColorOf(fe.color);
+    const hue = col.hue === -1 ? (frame * 4) % 360 : col.hue;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    const r = 22;
+    if (fe.shape === "gear") {
+      ctx.save(); ctx.rotate(frame * 0.03);
+      ctx.fillStyle = "hsl(" + hue + "," + col.sat + "%," + col.light + "%)";
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "hsl(" + hue + "," + col.sat + "%," + Math.max(20, col.light - 22) + "%)";
+      for (let k = 0; k < 8; k++) { ctx.save(); ctx.rotate(k / 8 * Math.PI * 2); ctx.fillRect(r * 0.78, -r * 0.18, r * 0.4, r * 0.36); ctx.restore(); }
+      ctx.restore();
+      ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      ctx.fillStyle = "hsl(" + hue + "," + col.sat + "%," + col.light + "%)";
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.font = (r * 1.1) + "px serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(fe.emoji, 0, 1);
+    if (fe.text) {
+      ctx.font = "bold 13px sans-serif";
+      const tw = ctx.measureText(fe.text).width + 12;
+      const ty = r + 14;
+      ctx.fillStyle = "rgba(11,14,20,.85)";
+      rrect(-tw / 2, ty - 11, tw, 20, 10); ctx.fill();
+      ctx.fillStyle = fe.taunt ? "#fb7185" : "#fde047";
+      ctx.fillText(fe.text, 0, ty);
+    }
+    ctx.restore();
+  }
+
+  function drawRank() {
+    const list = snakes.filter(s => s.alive).slice().sort((a, b) => b.score - a.score).slice(0, 6);
+    let html = '<div class="rk-title">排行榜</div>';
+    list.forEach((s, i) => {
+      const me = s === player ? " rk-me" : "";
+      html += '<div class="rk-row' + me + '"><span>' + (i + 1) + '. ' + s.name + '</span><span>' + s.score + '</span></div>';
+    });
+    rankEl.innerHTML = html;
+  }
+
+  function getCss(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function loop() {
+    if (!running) return;
+    if (paused) { loopId = requestAnimationFrame(loop); return; }
+    step(); draw();
+    loopId = requestAnimationFrame(loop);
+  }
+
+  function start() {
+    reset();
+    overlay.classList.add("hidden");
+    rewardEl.style.display = "none";
+    gachaBtn.style.display = "none";
+    timeEl.classList.remove("low");
+    timeEl.textContent = "1:00";
+    running = true; cancelAnimationFrame(loopId);
+    loopId = requestAnimationFrame(loop);
+  }
+
+  function togglePause() {
+    if (!running || !alive) return;
+    paused = !paused;
+    if (paused) {
+      pauseStart = Date.now();
+      rewardEl.style.display = "none";
+      gachaBtn.style.display = "none";
+      powerBtn.classList.add("hidden");
+      emoteBtn.classList.add("hidden");
+      emotePanel.classList.add("hidden");
+      ovTitle.textContent = "已暂停";
+      ovDesc.textContent = "按空格或点击按钮继续";
+      startBtn.textContent = "继续";
+      overlay.classList.remove("hidden");
+    } else {
+      roundEndAt += Date.now() - pauseStart; // 补偿暂停时长
+      if (invincibleUntil > Date.now()) invincibleUntil += Date.now() - pauseStart;
+      overlay.classList.add("hidden");
+    }
+  }
+
+  startBtn.addEventListener("click", () => { if (paused) togglePause(); else start(); });
+
+  // ---- 抽奖 & 皮肤 ----
+  function renderSkinGrid() {
+    let html = "";
+    for (const key of SKINS) {
+      const info = SKIN_INFO[key];
+      const isOwned = owned.includes(key);
+      const isActive = key === currentSkin;
+      const cls = "skin-card" + (isOwned ? "" : " locked") + (isActive ? " active" : "");
+      html += '<div class="' + cls + '" data-skin="' + key + '">' +
+        '<div class="preview" style="background:' + info.preview + '"></div>' +
+        '<div class="s-name">' + info.name + '</div>' +
+        '<div class="s-tier">' + TIERS[info.tier] + ' · ' + TIER_COST[info.tier] + '💰</div>' +
+        (isActive ? '<div class="s-flag">使用中</div>' : (isOwned ? '' : '<div class="s-flag">未解锁</div>')) +
+        '</div>';
+    }
+    skinGrid.innerHTML = html;
+  }
+
+  function updateGachaBal() { gachaBal.innerHTML = coinSVG(18) + '<span>' + coins + '</span>'; }
+
+  function openGacha() {
+    overlay.classList.add("hidden");
+    gachaModal.classList.remove("hidden");
+    updateGachaBal();
+    gachaMsg.textContent = "选一个档位抽皮肤，抽到就永久解锁";
+    renderSkinGrid();
+  }
+
+  function closeGachaFn() {
+    gachaModal.classList.add("hidden");
+    overlay.classList.remove("hidden");
+  }
+
+  function doGacha(tier) {
+    const cost = TIER_COST[tier];
+    if (coins < cost) { gachaMsg.textContent = "金币不足！需要 " + cost + " 💰，先玩一局赚金币"; return; }
+    coins -= cost;
+    const r = Math.random();
+    // 各档位概率：无敌 / 金币 / 未中 / 皮肤
+    const cfg = {
+      common: { inv: 0.06, coin: 0.18, miss: 0.16 },
+      rare:   { inv: 0.10, coin: 0.16, miss: 0.12 },
+      legend: { inv: 0.14, coin: 0.14, miss: 0.08 },
+    }[tier];
+    if (r < cfg.inv) {
+      powerups.invincible = (powerups.invincible || 0) + 1;
+      saveWallet(); refreshCoinHUD(); updateGachaBal();
+      gachaMsg.textContent = "🛡️ 获得【无敌10秒】×1！开局点左下角按钮激活，撞谁谁死";
+      return;
+    }
+    if (r < cfg.inv + cfg.coin) {
+      const bonus = { common: 4 + randInt(5), rare: 8 + randInt(7), legend: 14 + randInt(11) }[tier];
+      coins += bonus;
+      saveWallet(); refreshCoinHUD(); updateGachaBal();
+      gachaMsg.textContent = "💰 开出金币 +" + bonus + "！（运气一般，再接再厉）";
+      return;
+    }
+    if (r < cfg.inv + cfg.coin + cfg.miss) {
+      saveWallet(); refreshCoinHUD(); updateGachaBal();
+      gachaMsg.textContent = "😶 什么都没抽到… 金币已扣，再来一次？";
+      return;
+    }
+    // 抽皮肤
+    const pool = SKINS.filter(k => SKIN_INFO[k].tier === tier);
+    const unowned = pool.filter(k => !owned.includes(k));
+    if (unowned.length === 0) {
+      coins += cost; // 全解锁了，退还金币
+      saveWallet(); refreshCoinHUD(); updateGachaBal();
+      gachaMsg.textContent = "「" + TIERS[tier] + "」皮肤已全部解锁 ✅ 已退还 " + cost + " 💰";
+      return;
+    }
+    const win = unowned[randInt(unowned.length)];
+    owned.push(win); currentSkin = win; // 抽到即装备
+    saveWallet(); refreshCoinHUD(); updateGachaBal();
+    gachaMsg.textContent = "🎉 抽中皮肤「" + SKIN_INFO[win].name + "」！已自动装备";
+    renderSkinGrid();
+  }
+
+  gachaBtn.addEventListener("click", openGacha);
+  closeGacha.addEventListener("click", closeGachaFn);
+  document.querySelectorAll(".gacha-btn:not(.emote-gacha)").forEach(b =>
+    b.addEventListener("click", () => doGacha(b.dataset.tier)));
+  skinGrid.addEventListener("click", (e) => {
+    const card = e.target.closest(".skin-card");
+    if (!card) return;
+    const key = card.dataset.skin;
+    if (!owned.includes(key)) {
+      gachaMsg.textContent = "「" + SKIN_INFO[key].name + "」还没解锁，先抽「" + TIERS[SKIN_INFO[key].tier] + "」档";
+      return;
+    }
+    currentSkin = key; saveWallet(); renderSkinGrid();
+    gachaMsg.textContent = "已切换到「" + SKIN_INFO[key].name + "」";
+  });
+
+  // ---- 商店分页（皮肤抽奖 / 表情兑换 / 表情抽奖）----
+  const tabSkin = document.getElementById("tabSkin");
+  const tabFace = document.getElementById("tabFace");
+  const tabEmote = document.getElementById("tabEmote");
+  const faceGrid = document.getElementById("faceGrid");
+  const faceMsg = document.getElementById("faceMsg");
+  const emoteMsg = document.getElementById("emoteMsg");
+  const emoteGrid = document.getElementById("emoteGrid");
+  document.querySelectorAll(".tab").forEach(t =>
+    t.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
+      const which = t.dataset.tab;
+      tabSkin.classList.toggle("hidden", which !== "skin");
+      tabFace.classList.toggle("hidden", which !== "face");
+      tabEmote.classList.toggle("hidden", which !== "emote");
+      if (which === "face") renderFaceGrid();
+      if (which === "emote") renderEmoteGrid();
+    })
+  );
+
+  // 表情抽奖按钮（与皮肤抽奖按钮区分 .emote-gacha）
+  document.querySelectorAll(".emote-gacha").forEach(b =>
+    b.addEventListener("click", () => doEmoteGacha(b.dataset.tier)));
+
+  function renderFaceGrid() {
+    let html = "";
+    for (const key of FACES) {
+      const info = FACE_INFO[key];
+      const isOwned = ownedFaces.includes(key);
+      const isActive = key === currentFace;
+      const cls = "face-card" + (isOwned ? "" : " locked") + (isActive ? " active" : "");
+      const flag = isActive ? '<div class="f-flag owned">使用中</div>'
+        : isOwned ? '<div class="f-flag owned">已解锁</div>'
+        : '<div class="f-flag">' + info.price + '💰</div>';
+      html += '<div class="' + cls + '" data-face="' + key + '">' +
+        '<div class="f-preview">' + info.icon + '</div>' +
+        '<div class="f-name">' + info.name + '</div>' +
+        (isOwned ? '<div class="f-price" style="color:var(--muted)">点击装备</div>'
+                 : '<div class="f-price">' + info.price + ' 💰</div>') +
+        flag + '</div>';
+    }
+    faceGrid.innerHTML = html;
+  }
+
+  faceGrid.addEventListener("click", (e) => {
+    const card = e.target.closest(".face-card");
+    if (!card) return;
+    const key = card.dataset.face;
+    if (!ownedFaces.includes(key)) {
+      const price = FACE_INFO[key].price;
+      if (coins < price) { faceMsg.textContent = "金币不足！需要 " + price + " 💰"; return; }
+      coins -= price; ownedFaces.push(key); currentFace = key;
+      saveWallet(); refreshCoinHUD(); updateGachaBal(); renderFaceGrid();
+      faceMsg.textContent = "🎉 解锁并装备「" + FACE_INFO[key].name + "」";
+    } else {
+      currentFace = key; saveWallet(); renderFaceGrid();
+      faceMsg.textContent = "已装备「" + FACE_INFO[key].name + "」";
+    }
+  });
+
+  // ---- 表情抽奖 ----
+  function renderEmoteGrid() {
+    if (ownedEmotes.length === 0) {
+      emoteGrid.innerHTML = '<div class="emote-card" style="grid-column:1/-1;opacity:.6">还没有表情，抽一个吧！</div>';
+      return;
+    }
+    let html = "";
+    for (const e of ownedEmotes) {
+      const col = emoteColorOf(e.color);
+      const bg = col.hue === -1
+        ? "conic-gradient(from 0deg,#f87171,#facc15,#4ade80,#38bdf8,#a78bfa,#f87171)"
+        : "hsl(" + col.hue + "," + col.sat + "%," + col.light + "%)";
+      const shapeLabel = e.shape === "disk" ? "圆盘" : "齿轮";
+      html += '<div class="emote-card">' +
+        '<div class="e-icon" style="background:' + bg + '">' + e.emoji + '</div>' +
+        '<div class="e-text">' + (e.text || "") + '</div>' +
+        '<div class="e-meta">' + shapeLabel + "·" + e.color + '</div>' +
+        '</div>';
+    }
+    emoteGrid.innerHTML = html;
+  }
+
+  function doEmoteGacha(tier) {
+    const cost = TIER_COST[tier];
+    if (coins < cost) { emoteMsg.textContent = "金币不足！需要 " + cost + " 💰，先玩一局赚金币"; return; }
+    // 颜色池：普通无彩虹，传说含彩虹
+    const colorPool = tier === "common" ? EMOTE_COLORS.slice(0, 3)
+      : tier === "rare" ? EMOTE_COLORS.slice(0, 5) : EMOTE_COLORS;
+    const tpl = pick(EMOTE_POOL);
+    const color = pick(colorPool);
+    const shape = pick(EMOTE_SHAPES);
+    const sig = tpl.emoji + "|" + tpl.text + "|" + shape + "|" + color.name;
+    if (ownedEmotes.some(e => e.sig === sig)) {
+      coins += cost; // 已拥有，退还金币
+      saveWallet(); refreshCoinHUD(); updateGachaBal();
+      emoteMsg.textContent = "已拥有「" + (tpl.text || tpl.emoji) + "」(" + (shape === "disk" ? "圆盘" : "齿轮") + "·" + color.name + ")，已退还 " + cost + " 💰";
+      return;
+    }
+    coins -= cost;
+    ownedEmotes.push({ emoji: tpl.emoji, text: tpl.text, shape, color: color.name, taunt: tpl.taunt, sig });
+    saveWallet(); refreshCoinHUD(); updateGachaBal(); renderEmoteGrid();
+    emoteMsg.textContent = "🎉 抽到表情「" + (tpl.text || tpl.emoji) + "」(" + (shape === "disk" ? "圆盘" : "齿轮") + "·" + color.name + ")！游戏里点 💬 发送";
+  }
+
+  // ---- 无敌技能 ----
+  const powerBtn = document.getElementById("powerBtn");
+  function isInvincible() { return Date.now() < invincibleUntil; }
+  function activateInvincible() {
+    if (!running || !alive) return;
+    if (isInvincible()) return;
+    if (!powerups.invincible || powerups.invincible <= 0) return;
+    powerups.invincible -= 1;
+    invincibleUntil = Date.now() + 10000;
+    saveWallet(); refreshPowerBtn();
+  }
+  function refreshPowerBtn() {
+    if (!running || !alive || !(powerups.invincible > 0)) { powerBtn.classList.add("hidden"); return; }
+    powerBtn.classList.remove("hidden");
+    if (isInvincible()) {
+      const rem = Math.ceil((invincibleUntil - Date.now()) / 1000);
+      powerBtn.textContent = "🛡️ 无敌 " + rem + "s";
+      powerBtn.classList.add("active");
+    } else {
+      powerBtn.textContent = "🛡️ 无敌 ×" + powerups.invincible;
+      powerBtn.classList.remove("active");
+    }
+  }
+  powerBtn.addEventListener("click", activateInvincible);
+
+  // ---- 游戏内发送表情 ----
+  const emoteBtn = document.getElementById("emoteBtn");
+  const emotePanel = document.getElementById("emotePanel");
+  const emotePalette = document.getElementById("emotePalette");
+
+  function refreshEmoteBtn() {
+    if (!running || !alive) { emoteBtn.classList.add("hidden"); emotePanel.classList.add("hidden"); }
+    else emoteBtn.classList.remove("hidden");
+  }
+  function renderEmotePalette() {
+    if (ownedEmotes.length === 0) {
+      emotePalette.innerHTML = '<div class="emote-pick empty">还没有表情，去 💬表情抽奖 抽一个</div>';
+      return;
+    }
+    let html = '<div class="ep-title">点一个表情发送（圆盘 / 齿轮 随心发）</div>';
+    for (const e of ownedEmotes) {
+      html += '<div class="emote-pick" data-sig="' + e.sig + '">' +
+        '<div class="p-icon">' + e.emoji + '</div>' +
+        '<div class="p-text">' + (e.text || "") + '</div></div>';
+    }
+    emotePalette.innerHTML = html;
+  }
+  emoteBtn.addEventListener("click", () => {
+    if (!running || !alive) return;
+    const show = emotePanel.classList.contains("hidden");
+    emotePanel.classList.toggle("hidden");
+    if (show) renderEmotePalette();
+  });
+  emotePalette.addEventListener("click", (e) => {
+    const card = e.target.closest(".emote-pick");
+    if (!card || card.classList.contains("empty")) return;
+    const em = ownedEmotes.find(x => x.sig === card.dataset.sig);
+    if (!em) return;
+    sendEmote(player, em);
+    emotePanel.classList.add("hidden");
+  });
+
+  // ---- 输入 ----
+  function setPointer(cx, cy) {
+    const r = canvas.getBoundingClientRect();
+    pointerAngle = Math.atan2(cy - (r.top + r.height / 2), cx - (r.left + r.width / 2));
+  }
+  canvas.addEventListener("mousemove", (e) => setPointer(e.clientX, e.clientY));
+  canvas.addEventListener("mousedown", () => boosting = true);
+  window.addEventListener("mouseup", () => boosting = false);
+  canvas.addEventListener("touchstart", (e) => {
+    if (e.touches.length >= 2) boosting = true;
+    const t = e.touches[0]; setPointer(t.clientX, t.clientY);
+  }, { passive: true });
+  canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    boosting = e.touches.length >= 2;
+    const t = e.touches[0]; setPointer(t.clientX, t.clientY);
+  }, { passive: false });
+  window.addEventListener("touchend", (e) => { if (e.touches.length < 2) boosting = false; });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === " ") { e.preventDefault(); togglePause(); }
+    else if (e.key === "q" || e.key === "Q") { activateInvincible(); }
+    else if (e.key === "e" || e.key === "E") { if (running && alive) emoteBtn.click(); }
+  });
+
+  reset(); draw();
+})();
+</script>
+</body>
+</html>
