@@ -90,6 +90,8 @@
   .gacha-btn.t-common .g-tier { color: #93c5fd; }
   .gacha-btn.t-rare .g-tier { color: #c084fc; }
   .gacha-btn.t-legend .g-tier { color: #fb923c; }
+  .gacha-btn.t-epic .g-tier { color: #f43f5e; }
+  .gacha-btn.t-mythic .g-tier { color: #fde047; text-shadow: 0 0 6px rgba(253,224,71,.6); }
   .gacha-msg { min-height: 20px; text-align: center; font-size: 13px; color: #facc15; margin: 8px 0; font-weight: 600; }
   .sec-title { font-size: 12px; color: var(--muted); letter-spacing: 1px; margin: 6px 0 8px; }
   .skin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; max-height: 44vh; overflow-y: auto; padding-right: 4px; }
@@ -192,7 +194,7 @@
     </div>
     <div class="overlay" id="overlay">
       <h2 id="ov-title">贪吃蛇大作战</h2>
-      <p id="ov-desc">每局限时 <b>1 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。去 <b>🎰皮肤抽奖</b> 抽皮肤 / 金币 / 无敌10秒，去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送的可爱表情（圆盘/齿轮、粉/金/蓝各种色）。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情嘲讽对手！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死。</p>
+      <p id="ov-desc">每局限时 <b>1 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。<b>🎰皮肤抽奖</b> 有 <b>67 款皮肤</b>（颜色/卡通人物/齿轮转盘/影身隐形）！去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送表情：普通5·稀有10·传说20·<b>史诗50</b>·<b>神话100</b> 币，圆盘/齿轮载体、粉/金/蓝各种色、还有「你很菜」嘲讽款。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死。</p>
       <div class="reward" id="reward" style="display:none">
         <div class="big-coin" id="bigCoin"></div>
         <div class="earn" id="earnVal">+0 <small>金币</small></div>
@@ -250,6 +252,12 @@
           <div class="gacha-btn emote-gacha t-legend" data-tier="legend">
             <div class="g-tier">传说</div><div class="g-cost"><span>20</span>💰</div>
           </div>
+          <div class="gacha-btn emote-gacha t-epic" data-tier="epic">
+            <div class="g-tier">史诗</div><div class="g-cost"><span>50</span>💰</div>
+          </div>
+          <div class="gacha-btn emote-gacha t-mythic" data-tier="mythic">
+            <div class="g-tier">神话</div><div class="g-cost"><span>100</span>💰</div>
+          </div>
         </div>
         <div class="gacha-msg" id="emoteMsg">花金币抽可爱表情：圆盘 / 齿轮载体，粉·金·蓝·绿·紫·彩虹各种色，还有「你很菜」嘲讽款！抽到进收藏，游戏里点 💬 发送。</div>
         <div class="sec-title">我的表情收藏（游戏里可发送）</div>
@@ -304,7 +312,7 @@
 
   // ---- 局时 & 金币 ----
   const ROUND_TIME = 60;        // 每局秒数
-  const TIER_COST = { common: 5, rare: 10, legend: 20 };
+  const TIER_COST = { common: 5, rare: 10, legend: 20, epic: 50, mythic: 100 };
 
   // 皮肤库：颜色(color) / 卡通人物(character) / 特殊(special)
   // character 额外字段：ear(耳朵形状) hue/sat/light(身体配色) stripe/patch/glow
@@ -325,6 +333,27 @@
     food:     { name: "食物同色", tier: "rare",   type: "color", preview: "linear-gradient(90deg,#f87171,#facc15,#4ade80,#38bdf8,#a78bfa)" },
     lava:     { name: "熔岩",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#fde047,#f97316,#dc2626)" },
     prism:    { name: "棱镜",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#fca5a5,#fcd34d,#86efac,#93c5fd,#d8b4fe)" },
+    // 新增颜色皮肤
+    sunset:   { name: "日落",     tier: "legend", type: "color", preview: "linear-gradient(90deg,#fb923c,#f97316,#a21caf)" },
+    silver:   { name: "银辉",     tier: "legend", type: "color", preview: "linear-gradient(90deg,#e5e7eb,#9ca3af,#f3f4f6)" },
+    magenta:  { name: "品红",     tier: "legend", type: "color", preview: "linear-gradient(90deg,#ec4899,#db2777,#f0abfc)" },
+    pearl:    { name: "珠光",     tier: "legend", type: "color", preview: "linear-gradient(90deg,#fef3c7,#fbcfe8,#e0e7ff)" },
+    bubble:   { name: "泡泡",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#a5f3fc,#c7d2fe,#fbcfe8)" },
+    slime:    { name: "史莱姆",   tier: "rare",   type: "color", preview: "linear-gradient(90deg,#bbf7d0,#22c55e,#4ade80)" },
+    violet:   { name: "紫罗兰",   tier: "rare",   type: "color", preview: "linear-gradient(90deg,#c4b5fd,#8b5cf6,#7c3aed)" },
+    ember:    { name: "余烬",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#fca5a5,#ef4444,#7f1d1d)" },
+    rose:     { name: "玫瑰",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#fda4af,#f43f5e,#be123c)" },
+    teal:     { name: "青碧",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#5eead4,#14b8a6,#0f766e)" },
+    coral:    { name: "珊瑚",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#fda4af,#fb7185,#f97316)" },
+    steel:    { name: "钢蓝",     tier: "rare",   type: "color", preview: "linear-gradient(90deg,#93c5fd,#3b82f6,#1e3a8a)" },
+    forest:   { name: "森林",     tier: "common", type: "color", preview: "linear-gradient(90deg,#86efac,#15803d,#064e3b)" },
+    sky:      { name: "天空",     tier: "common", type: "color", preview: "linear-gradient(90deg,#bae6fd,#0ea5e9,#0369a1)" },
+    tangerine:{ name: "橘橙",     tier: "common", type: "color", preview: "linear-gradient(90deg,#fed7aa,#f97316,#c2410c)" },
+    ice:      { name: "冰蓝",     tier: "common", type: "color", preview: "linear-gradient(90deg,#e0f2fe,#7dd3fc,#38bdf8)" },
+    lemon:    { name: "柠檬",     tier: "common", type: "color", preview: "linear-gradient(90deg,#fef08a,#facc15,#ca8a04)" },
+    lilac:    { name: "丁香",     tier: "common", type: "color", preview: "linear-gradient(90deg,#e9d5ff,#c084fc,#9333ea)" },
+    denim:    { name: "牛仔",     tier: "common", type: "color", preview: "linear-gradient(90deg,#93c5fd,#2563eb,#1e40af)" },
+    olive:    { name: "橄榄",     tier: "common", type: "color", preview: "linear-gradient(90deg,#d9f99d,#65a30d,#3f6212)" },
     // —— 卡通人物皮肤 ——
     cat:    { name: "小猫",   tier: "rare",   type: "character", ear: "cat",      hue: 32,  sat: 70, preview: "linear-gradient(90deg,#fbbf24,#f59e0b,#b45309)" },
     fox:    { name: "狐狸",   tier: "rare",   type: "character", ear: "fox",      hue: 20,  sat: 80, preview: "linear-gradient(90deg,#fb923c,#ea580c,#9a3412)" },
@@ -339,12 +368,30 @@
     cow:    { name: "奶牛",   tier: "common", type: "character", ear: "round",    hue: 0,   sat: 0,  light: 95, patch: true, preview: "linear-gradient(90deg,#ffffff 60%,#111111)" },
     ghost:  { name: "幽灵",   tier: "rare",   type: "character", ear: "none",     hue: 220, sat: 15, light: 90, glow: true, preview: "linear-gradient(90deg,#e5e7eb,#cbd5e1)" },
     dragon: { name: "小龙",   tier: "legend", type: "character", ear: "horns",    hue: 140, sat: 65, preview: "linear-gradient(90deg,#4ade80,#15803d)" },
+    // 新增卡通人物皮肤
+    koala:    { name: "考拉",   tier: "rare",   type: "character", ear: "round",    hue: 0,   sat: 0,  light: 78, preview: "linear-gradient(90deg,#f3f4f6,#9ca3af)" },
+    monkey:   { name: "猴子",   tier: "common", type: "character", ear: "round",    hue: 28,  sat: 40, light: 52, preview: "linear-gradient(90deg,#d6a06a,#92613a)" },
+    deer:     { name: "小鹿",   tier: "common", type: "character", ear: "round",    hue: 30,  sat: 35, light: 60, preview: "linear-gradient(90deg,#fcd9b6,#c2884f)" },
+    wolf:     { name: "灰狼",   tier: "rare",   type: "character", ear: "fox",      hue: 220, sat: 10, light: 58, preview: "linear-gradient(90deg,#cbd5e1,#64748b)" },
+    duck:     { name: "小鸭",   tier: "common", type: "character", ear: "crest",    hue: 48,  sat: 90, light: 60, preview: "linear-gradient(90deg,#fde047,#facc15)" },
+    bee:      { name: "蜜蜂",   tier: "common", type: "character", ear: "none",     hue: 48,  sat: 90, light: 55, stripe: true, preview: "linear-gradient(90deg,#fde047,#facc15 60%,#111827)" },
+    ladybug:  { name: "瓢虫",   tier: "common", type: "character", ear: "none",     hue: 0,   sat: 80, light: 50, patch: true, preview: "linear-gradient(90deg,#ef4444 60%,#111827)" },
+    octopus:  { name: "章鱼",   tier: "rare",   type: "character", ear: "none",     hue: 280, sat: 60, light: 62, preview: "linear-gradient(90deg,#d8b4fe,#9333ea)" },
+    unicorn:  { name: "独角兽", tier: "legend", type: "character", ear: "horns",    hue: 330, sat: 60, light: 80, glow: true, preview: "linear-gradient(90deg,#fbcfe8,#f9a8d4,#fff)" },
+    alien:    { name: "外星人", tier: "rare",   type: "character", ear: "none",     hue: 120, sat: 70, light: 55, glow: true, preview: "linear-gradient(90deg,#bbf7d0,#22c55e)" },
+    robot:    { name: "机器人", tier: "legend", type: "character", ear: "none",     hue: 210, sat: 25, light: 62, glow: true, preview: "linear-gradient(90deg,#cbd5e1,#64748b)" },
+    catpink:  { name: "粉猫",   tier: "rare",   type: "character", ear: "cat",      hue: 330, sat: 70, light: 66, preview: "linear-gradient(90deg,#fbcfe8,#ec4899)" },
+    squirrel: { name: "松鼠",   tier: "common", type: "character", ear: "round",    hue: 25,  sat: 55, light: 50, preview: "linear-gradient(90deg,#fdba74,#c2410c)" },
+    reindeer: { name: "驯鹿",   tier: "rare",   type: "character", ear: "horns",    hue: 28,  sat: 40, light: 46, preview: "linear-gradient(90deg,#d6a06a,#7c4a1e)" },
+    bat:      { name: "蝙蝠",   tier: "common", type: "character", ear: "cat",      hue: 0,   sat: 0,  light: 16, preview: "linear-gradient(90deg,#374151,#111827)" },
+    catgirl:  { name: "猫娘",   tier: "legend", type: "character", ear: "cat",      hue: 330, sat: 65, light: 70, preview: "linear-gradient(90deg,#fbcfe8,#f472b6,#a78bfa)" },
     // —— 特殊皮肤 ——
     gear:      { name: "齿轮",   tier: "legend", type: "special", kind: "gear",      preview: "radial-gradient(circle,#d1d5db,#6b7280)" },
     turntable: { name: "转盘",   tier: "legend", type: "special", kind: "turntable", preview: "radial-gradient(circle,#374151 38%,#f472b6 39%,#374151 60%)" },
+    shadow:    { name: "影身",   tier: "rare",   type: "special", kind: "shadow",    preview: "radial-gradient(circle,#0b0e14 40%,#1f2937 100%)" },
   };
   const SKINS = Object.keys(SKIN_INFO);
-  const TIERS = { common: "普通", rare: "稀有", legend: "传说" };
+  const TIERS = { common: "普通", rare: "稀有", legend: "传说", epic: "史诗", mythic: "神话" };
 
   // 可爱小表情（emoji 风），每条蛇随机分配一个
   const FACES = ["normal", "happy", "wink", "star", "love", "cool", "surprised", "sleepy", "cry", "angry", "tongue", "blush"];
@@ -367,23 +414,62 @@
 
   // 可发送的「可爱小表情」：圆盘 / 齿轮 两种载体，粉/金/蓝/绿/紫/彩虹 多种颜色
   // emoji 图案 + text 嘲讽文字（如「你很菜」「我最强」），taunt 标记是否嘲讽款
+  // 可发送的「可爱小表情」：圆盘 / 齿轮 两种载体，粉/金/蓝/绿/紫/彩虹 多种颜色
+  // emoji 图案 + text 嘲讽文字（如「你很菜」「我最强」），taunt 标记是否嘲讽款，tier 对应抽奖档位
   const EMOTE_POOL = [
-    { emoji: "😎", text: "你很菜", taunt: true },
-    { emoji: "💪", text: "我最强", taunt: true },
-    { emoji: "👑", text: "冠军",   taunt: true },
-    { emoji: "😼", text: "菜",     taunt: true },
-    { emoji: "🐍", text: "我吃你", taunt: true },
-    { emoji: "🔥", text: "", taunt: false },
-    { emoji: "❤️", text: "", taunt: false },
-    { emoji: "⭐", text: "", taunt: false },
-    { emoji: "🤩", text: "", taunt: false },
-    { emoji: "😂", text: "", taunt: false },
-    { emoji: "💖", text: "", taunt: false },
-    { emoji: "🏆", text: "", taunt: false },
-    { emoji: "🚀", text: "", taunt: false },
-    { emoji: "✨", text: "", taunt: false },
-    { emoji: "🥳", text: "", taunt: false },
-    { emoji: "💀", text: "", taunt: false },
+    // 普通（5💰）
+    { tier: "common", emoji: "🤡", text: "小丑", taunt: true },
+    { tier: "common", emoji: "😺", text: "喵",   taunt: false },
+    { tier: "common", emoji: "🐸", text: "呱",   taunt: false },
+    { tier: "common", emoji: "💩", text: "臭",   taunt: true },
+    { tier: "common", emoji: "👻", text: "吓",   taunt: false },
+    { tier: "common", emoji: "🍀", text: "",     taunt: false },
+    { tier: "common", emoji: "🌸", text: "",     taunt: false },
+    // 稀有（10💰）
+    { tier: "rare", emoji: "😎", text: "你很菜", taunt: true },
+    { tier: "rare", emoji: "💪", text: "我最强", taunt: true },
+    { tier: "rare", emoji: "👑", text: "冠军",   taunt: true },
+    { tier: "rare", emoji: "😼", text: "菜",     taunt: true },
+    { tier: "rare", emoji: "🐍", text: "我吃你", taunt: true },
+    { tier: "rare", emoji: "🔥", text: "", taunt: false },
+    { tier: "rare", emoji: "❤️", text: "", taunt: false },
+    { tier: "rare", emoji: "⭐", text: "", taunt: false },
+    { tier: "rare", emoji: "🤩", text: "", taunt: false },
+    { tier: "rare", emoji: "😂", text: "", taunt: false },
+    { tier: "rare", emoji: "🍕", text: "吃",     taunt: false },
+    // 传说（20💰）
+    { tier: "legend", emoji: "💖", text: "",      taunt: false },
+    { tier: "legend", emoji: "🏆", text: "赢",    taunt: true },
+    { tier: "legend", emoji: "🚀", text: "冲",    taunt: false },
+    { tier: "legend", emoji: "✨", text: "",      taunt: false },
+    { tier: "legend", emoji: "🥳", text: "嗨",    taunt: false },
+    { tier: "legend", emoji: "💀", text: "死",    taunt: true },
+    { tier: "legend", emoji: "🎉", text: "庆祝",  taunt: false },
+    { tier: "legend", emoji: "🌟", text: "闪",    taunt: false },
+    { tier: "legend", emoji: "💯", text: "满分",  taunt: true },
+    { tier: "legend", emoji: "😈", text: "坏",    taunt: true },
+    // 史诗（50💰）
+    { tier: "epic", emoji: "💎", text: "钻石",   taunt: true },
+    { tier: "epic", emoji: "⚡", text: "秒你",   taunt: true },
+    { tier: "epic", emoji: "🐉", text: "龙",     taunt: false },
+    { tier: "epic", emoji: "🤖", text: "机甲",   taunt: true },
+    { tier: "epic", emoji: "🌈", text: "彩虹",   taunt: false },
+    { tier: "epic", emoji: "👹", text: "鬼王",   taunt: true },
+    { tier: "epic", emoji: "🔥", text: "无敌",   taunt: true },
+    { tier: "epic", emoji: "💥", text: "爆",     taunt: true },
+    { tier: "epic", emoji: "🦊", text: "狐",     taunt: false },
+    { tier: "epic", emoji: "👻", text: "幽",     taunt: false },
+    // 神话（100💰）
+    { tier: "mythic", emoji: "👑", text: "王者",   taunt: true },
+    { tier: "mythic", emoji: "🦄", text: "神话",   taunt: false },
+    { tier: "mythic", emoji: "🌟", text: "传说",   taunt: true },
+    { tier: "mythic", emoji: "💫", text: "星爆",   taunt: false },
+    { tier: "mythic", emoji: "🦁", text: "狮王",   taunt: true },
+    { tier: "mythic", emoji: "🔱", text: "三叉",   taunt: true },
+    { tier: "mythic", emoji: "☄️", text: "陨石",   taunt: true },
+    { tier: "mythic", emoji: "🏅", text: "冠军王", taunt: true },
+    { tier: "mythic", emoji: "🌌", text: "宇宙",   taunt: false },
+    { tier: "mythic", emoji: "💠", text: "神格",   taunt: false },
   ];
   const EMOTE_COLORS = [
     { name: "粉",   hue: 330, sat: 82, light: 64 },
@@ -771,6 +857,26 @@
       case "prism":    return "hsl(" + ((seg * 30) % 360) + ",70%," + (82 - i / n * 18) + "%)";
       case "retro":    return (Math.floor(seg / 3) % 2 === 0) ? "hsl(320,80%,62%)" : "hsl(190,80%,58%)";
       case "tiger":    return (Math.floor(seg / 2) % 2 === 0) ? "hsl(30,85%,55%)" : "hsl(30,85%,35%)";
+      case "sunset":   return "hsl(" + (28 + (seg % 2 ? 8 : -8) + Math.sin(seg*0.12)*300) + ",85%," + (55 + Math.sin(seg*0.1)*8) + "%)";
+      case "silver":   return "hsl(220,8%," + (62 - i/n*22 + (seg%2?6:-6)) + "%)";
+      case "magenta":  return "hsl(" + (320 + Math.sin(seg*0.2)*30) + ",80%," + (56 + Math.sin(seg*0.15)*10) + "%)";
+      case "pearl":    return "hsl(" + (40 + (seg%3)*40) + ",60%," + (88 - i/n*16) + "%)";
+      case "bubble":   return "hsl(" + (190 + (seg%3)*50) + ",80%," + (82 - i/n*14) + "%)";
+      case "slime":    return "hsl(" + (135 + Math.sin(seg*0.2)*20) + ",70%," + (60 + Math.sin(seg*0.15)*12) + "%)";
+      case "violet":   return "hsl(" + (265 + (seg%2?16:-10)) + ",68%," + (66 - i/n*16) + "%)";
+      case "ember":    return "hsl(" + (8 + Math.sin(seg*0.2)*22) + ",85%," + (48 + Math.sin(seg*0.15)*14) + "%)";
+      case "rose":     return "hsl(" + (345 + Math.sin(seg*0.2)*18) + ",80%," + (62 + Math.sin(seg*0.12)*8) + "%)";
+      case "teal":     return "hsl(" + (172 + (seg%2?12:-8)) + ",62%," + (52 - i/n*16) + "%)";
+      case "coral":    return "hsl(" + (14 + Math.sin(seg*0.2)*16) + ",85%," + (68 + Math.sin(seg*0.15)*8) + "%)";
+      case "steel":    return "hsl(" + (214 + (seg%2?14:-8)) + ",62%," + (54 - i/n*18) + "%)";
+      case "forest":   return "hsl(" + (135 + Math.sin(seg*0.15)*24) + ",60%," + (42 + Math.sin(seg*0.1)*16) + "%)";
+      case "sky":      return "hsl(" + (200 + Math.sin(seg*0.2)*24) + ",82%," + (62 - i/n*18) + "%)";
+      case "tangerine":return "hsl(" + (28 + Math.sin(seg*0.2)*10) + ",90%," + (58 + Math.sin(seg*0.15)*8) + "%)";
+      case "ice":      return "hsl(" + (200 + (seg%2?16:-8)) + ",80%," + (78 - i/n*16) + "%)";
+      case "lemon":    return "hsl(" + (50 + Math.sin(seg*0.2)*8) + ",92%," + (60 - i/n*14) + "%)";
+      case "lilac":    return "hsl(" + (275 + Math.sin(seg*0.2)*20) + ",70%," + (74 - i/n*16) + "%)";
+      case "denim":    return "hsl(" + (218 + (seg%2?12:-8)) + ",70%," + (50 - i/n*18) + "%)";
+      case "olive":    return "hsl(" + (82 + (seg%2?12:-8)) + ",55%," + (46 - i/n*16) + "%)";
       default:         return "hsl(" + s.hue + ",70%,52%)";
     }
   }
@@ -950,7 +1056,16 @@
     if (isSpecial) {
       for (let i = pts.length - 1; i >= 0; i--) {
         if (info.kind === "gear") drawGear(pts[i].x, pts[i].y, R * 0.92, i * 0.5 + frame * 0.04, s.hue);
-        else drawDisc(pts[i].x, pts[i].y, R * 0.92, s.hue);
+        else if (info.kind === "shadow") {
+          // 影身：与背景同色的黑，仅留极淡描边，肉眼勉强可辨
+          ctx.beginPath();
+          ctx.fillStyle = "#0b0e14";
+          ctx.arc(pts[i].x, pts[i].y, R, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,255,255,.10)";
+          ctx.lineWidth = Math.max(1, R * 0.08);
+          ctx.stroke();
+        } else drawDisc(pts[i].x, pts[i].y, R * 0.92, s.hue);
       }
     } else {
       for (let i = pts.length - 1; i >= 0; i--) {
@@ -1290,10 +1405,13 @@
   function doEmoteGacha(tier) {
     const cost = TIER_COST[tier];
     if (coins < cost) { emoteMsg.textContent = "金币不足！需要 " + cost + " 💰，先玩一局赚金币"; return; }
-    // 颜色池：普通无彩虹，传说含彩虹
-    const colorPool = tier === "common" ? EMOTE_COLORS.slice(0, 3)
-      : tier === "rare" ? EMOTE_COLORS.slice(0, 5) : EMOTE_COLORS;
-    const tpl = pick(EMOTE_POOL);
+    // 颜色池：普通无彩虹，传说含彩虹；史诗/神话全色
+    const colorPool = (tier === "common") ? EMOTE_COLORS.slice(0, 3)
+      : (tier === "rare") ? EMOTE_COLORS.slice(0, 5) : EMOTE_COLORS;
+    // 只从本档位表情池抽取
+    const pool = EMOTE_POOL.filter(e => e.tier === tier);
+    if (pool.length === 0) { emoteMsg.textContent = "该档位还没有表情"; return; }
+    const tpl = pick(pool);
     const color = pick(colorPool);
     const shape = pick(EMOTE_SHAPES);
     const sig = tpl.emoji + "|" + tpl.text + "|" + shape + "|" + color.name;
