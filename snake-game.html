@@ -194,7 +194,7 @@
     </div>
     <div class="overlay" id="overlay">
       <h2 id="ov-title">贪吃蛇大作战</h2>
-      <p id="ov-desc">每局限时 <b>5 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。<b>🎰皮肤抽奖</b> 有 <b>67 款皮肤</b>（颜色/卡通人物/齿轮转盘/影身隐形）！去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送表情：普通5·稀有10·传说20·<b>史诗50</b>·<b>神话100</b> 币，圆盘/齿轮载体、粉/金/蓝各种色、还有「你很菜」嘲讽款。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死、撞墙也不死！</p>
+      <p id="ov-desc">每局限时 <b>5 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。<b>🎰皮肤抽奖</b> 有 <b>167 款皮肤</b>（颜色/卡通人物/齿轮转盘/影身隐形）！去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送表情：普通5·稀有10·传说20·<b>史诗50</b>·<b>神话100</b> 币，圆盘/齿轮载体、粉/金/蓝各种色、还有「你很菜」嘲讽款。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死、撞墙也不死！</p>
       <div class="reward" id="reward" style="display:none">
         <div class="big-coin" id="bigCoin"></div>
         <div class="earn" id="earnVal">+0 <small>金币</small></div>
@@ -393,6 +393,24 @@
   const SKINS = Object.keys(SKIN_INFO);
   const TIERS = { common: "普通", rare: "稀有", legend: "传说", epic: "史诗", mythic: "神话" };
 
+  // 程序化批量生成 100 款颜色皮肤（真实渲染，色相用黄金角均匀分布，外观各异）
+  (function generateExtraSkins() {
+    const pats = ["solid", "stripe", "dual", "dots", "gradient"];
+    const tiers = ["common", "common", "rare", "rare", "legend"];
+    for (let i = 0; i < 100; i++) {
+      const key = "gen" + i;
+      const hue = (i * 137) % 360;     // 黄金角，色相均匀分散
+      const sat = 55 + (i % 5) * 8;    // 55~87
+      const pat = pats[i % pats.length];
+      const tier = tiers[i % tiers.length];
+      SKIN_INFO[key] = {
+        name: "幻彩" + (i + 1), tier: tier, type: "color", pat: pat, hue: hue, sat: sat,
+        preview: "linear-gradient(90deg,hsl(" + hue + "," + sat + "%,58%),hsl(" + ((hue + 50) % 360) + "," + sat + "%,46%))"
+      };
+      SKINS.push(key);
+    }
+  })();
+
   // 可爱小表情（emoji 风），每条蛇随机分配一个
   const FACES = ["normal", "happy", "wink", "star", "love", "cool", "surprised", "sleepy", "cry", "angry", "tongue", "blush"];
 
@@ -490,7 +508,10 @@
   let currentFace = localStorage.getItem("snake_face") || "normal";
   if (!ownedFaces.includes(currentFace)) currentFace = "normal";
   let powerups = JSON.parse(localStorage.getItem("snake_powerups") || '{"invincible":0}');
+  // 注意：无敌道具不再免费赠送，只能通过抽奖获得（每次抽中按档位发放一包）
   let invincibleUntil = 0; // 本局无敌截止时间戳
+  // 抽中无敌时按档位发放的数量（保证「200 个无敌」都能通过抽奖累积获得）
+  const INV_PACK = { common: 3, rare: 5, legend: 10 };
   let ownedEmotes = JSON.parse(localStorage.getItem("snake_emotes") || "[]");
 
   function saveWallet() {
@@ -846,6 +867,16 @@
     if (c.type === "character") {
       const l = (c.light != null ? c.light : 60) - i / n * 20;
       return "hsl(" + c.hue + "," + (c.sat != null ? c.sat : 65) + "%," + l + "%)";
+    }
+    // 程序化皮肤：按 pat 字段渲染（gen 系列）
+    if (c.pat) {
+      switch (c.pat) {
+        case "stripe":   return (Math.floor(seg / 3) % 2 === 0) ? "hsl(" + c.hue + "," + c.sat + "%,55%)" : "hsl(" + c.hue + "," + c.sat + "%,32%)";
+        case "dual":     return "hsl(" + ((c.hue + seg * 3) % 360) + "," + c.sat + "%,54%)";
+        case "dots":     return (Math.floor(seg / 2) % 2 === 0) ? "hsl(" + c.hue + "," + c.sat + "%,63%)" : "hsl(" + c.hue + "," + c.sat + "%,42%)";
+        case "gradient": return "hsl(" + c.hue + "," + c.sat + "%," + (60 - i / n * 26) + "%)";
+        default:         return "hsl(" + c.hue + "," + c.sat + "%,52%)";
+      }
     }
     switch (s.skin) {
       case "rainbow":  return "hsl(" + ((seg * 8 + frame * 2) % 360) + ",80%,58%)";
@@ -1277,9 +1308,10 @@
       legend: { inv: 0.14, coin: 0.14, miss: 0.08 },
     }[tier];
     if (r < cfg.inv) {
-      powerups.invincible = (powerups.invincible || 0) + 1;
+      const pack = INV_PACK[tier] || 3;
+      powerups.invincible = (powerups.invincible || 0) + pack;
       saveWallet(); refreshCoinHUD(); updateGachaBal();
-      gachaMsg.textContent = "🛡️ 获得【无敌10秒】×1！开局点左下角按钮激活，撞谁谁死";
+      gachaMsg.textContent = "🛡️ 获得【无敌10秒】×" + pack + "！开局点左下角按钮激活，撞谁谁死、撞墙也不死（仅能通过抽奖获得）";
       return;
     }
     if (r < cfg.inv + cfg.coin) {
