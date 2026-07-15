@@ -108,6 +108,14 @@
   .skin-card .s-flag { position: absolute; top: 8px; right: 8px; font-size: 10px; color: var(--accent); font-weight: 700; }
   .modal .close-btn { align-self: center; }
 
+  /* 充值中心 */
+  .pay-pkg { text-align: center; padding: 8px 4px 4px; }
+  .pay-amt { font-size: 34px; font-weight: 800; color: #facc15; }
+  .pay-get { font-size: 16px; font-weight: 700; color: #e5e7eb; margin-top: 2px; }
+  .pay-sub { font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  .pay-now .g-cost { color: #facc15; }
+  .pay-now:disabled { opacity: .55; cursor: default; }
+
   /* 商店分页标签 */
   .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
   .tab {
@@ -203,6 +211,7 @@
       <div class="ov-btns">
         <button id="startBtn">开始游戏</button>
         <button id="gachaBtn" class="ghost" style="display:none">去抽奖 🎰</button>
+        <button id="payBtn" class="ghost" style="display:none">💰 充值</button>
       </div>
     </div>
 
@@ -265,6 +274,25 @@
       </div>
       <button class="ghost close-btn" id="closeGacha">返回</button>
     </div>
+
+    <!-- 充值中心弹窗：支付宝真实支付，付款后自动到账 -->
+    <div class="modal hidden" id="payModal">
+      <div class="modal-head">
+        <h2>充值中心 💰</h2>
+        <div class="bal" id="payBal"></div>
+      </div>
+      <div class="pay-pkg">
+        <div class="pay-amt" id="payAmt">¥6.00</div>
+        <div class="pay-get" id="payGet">= 1000 蛇币</div>
+        <div class="pay-sub">蛇币用于皮肤抽奖 / 表情兑换 / 抽无敌，永久有效</div>
+        <button class="gacha-btn t-common pay-now" id="payNow" style="width:100%;margin-top:14px">
+          <div class="g-tier">立即充值</div><div class="g-cost"><span id="payPrice">6.00</span> 元</div>
+        </button>
+        <div class="gacha-msg" id="payMsg">点击「立即充值」跳转支付宝付款，支付成功后蛇币自动到账。</div>
+        <button class="ghost close-btn" id="payQuery" style="margin-top:10px">查询支付结果</button>
+      </div>
+      <button class="ghost close-btn" id="closePay">返回</button>
+    </div>
   </div>
   <div class="hint">鼠标移动 / 触摸拖动转向 · 按住加速 · 空格暂停</div>
 </div>
@@ -310,9 +338,30 @@
   const skinGrid = document.getElementById("skinGrid");
   const closeGacha = document.getElementById("closeGacha");
 
+  // 充值中心 DOM
+  const payBtn = document.getElementById("payBtn");
+  const payModal = document.getElementById("payModal");
+  const closePay = document.getElementById("closePay");
+  const payNow = document.getElementById("payNow");
+  const payQuery = document.getElementById("payQuery");
+  const payMsg = document.getElementById("payMsg");
+  const payBal = document.getElementById("payBal");
+  const payPrice = document.getElementById("payPrice");
+  const payAmt = document.getElementById("payAmt");
+  const payGet = document.getElementById("payGet");
+
   // ---- 局时 & 金币 ----
   const ROUND_TIME = 300;       // 每局秒数（5分钟）
   const TIER_COST = { common: 5, rare: 10, legend: 20, epic: 50, mythic: 100 };
+
+  // ===== 充值中心配置（真实支付宝支付）=====
+  // 改成你部署好的后端公网地址（server/ 跑起来的地址），否则充值按钮会提示「后端未配置」
+  const API_BASE = "https://YOUR-PAY-BACKEND.example.com";
+  const TOPUP_PRICE = 6.00;   // 与后端 TOPUP_PRICE 保持一致（元）
+  const TOPUP_COINS = 1000;   // 与后端 TOPUP_COINS 保持一致（蛇币）
+  // 随机用户标识（绑定订单防冒领），存本地
+  let uid = localStorage.getItem("snake_uid");
+  if (!uid) { uid = "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem("snake_uid", uid); }
 
   // 皮肤库：颜色(color) / 卡通人物(character) / 特殊(special)
   // character 额外字段：ear(耳朵形状) hue/sat/light(身体配色) stripe/patch/glow
@@ -791,6 +840,7 @@
     rewardEl.style.display = "flex";
     startBtn.textContent = "再来一局";
     gachaBtn.style.display = "inline-block";
+    payBtn.style.display = "inline-block";
     overlay.classList.remove("hidden");
   }
 
@@ -1234,6 +1284,7 @@
     overlay.classList.add("hidden");
     rewardEl.style.display = "none";
     gachaBtn.style.display = "none";
+    payBtn.style.display = "none";
     timeEl.classList.remove("low");
     timeEl.textContent = "5:00";
     running = true; cancelAnimationFrame(loopId);
@@ -1247,6 +1298,7 @@
       pauseStart = Date.now();
       rewardEl.style.display = "none";
       gachaBtn.style.display = "none";
+      payBtn.style.display = "none";
       powerBtn.classList.add("hidden");
       emoteBtn.classList.add("hidden");
       emotePanel.classList.add("hidden");
@@ -1344,7 +1396,7 @@
 
   gachaBtn.addEventListener("click", openGacha);
   closeGacha.addEventListener("click", closeGachaFn);
-  document.querySelectorAll(".gacha-btn:not(.emote-gacha)").forEach(b =>
+  document.querySelectorAll(".gacha-btn:not(.emote-gacha):not(#payNow)").forEach(b =>
     b.addEventListener("click", () => doGacha(b.dataset.tier)));
   skinGrid.addEventListener("click", (e) => {
     const card = e.target.closest(".skin-card");
@@ -1357,6 +1409,108 @@
     currentSkin = key; saveWallet(); renderSkinGrid();
     gachaMsg.textContent = "已切换到「" + SKIN_INFO[key].name + "」";
   });
+
+  // ===== 充值中心（支付宝真实支付，付款后自动到账）=====
+  function refreshPayBal() { payBal.innerHTML = coinSVG(18) + '<span>' + coins + '</span>'; }
+
+  function openPay() {
+    overlay.classList.add("hidden");
+    payModal.classList.remove("hidden");
+    payAmt.textContent = "¥" + TOPUP_PRICE.toFixed(2);
+    payPrice.textContent = TOPUP_PRICE.toFixed(2);
+    payGet.textContent = "= " + TOPUP_COINS + " 蛇币";
+    payMsg.textContent = "点击「立即充值」跳转支付宝付款，支付成功后蛇币自动到账。";
+    payNow.disabled = false;
+    refreshPayBal();
+  }
+  function closePayFn() { payModal.classList.add("hidden"); overlay.classList.remove("hidden"); }
+
+  // 查询订单是否已支付；已付则发放蛇币。cb(ok) 回调结果
+  function grantTopup(orderId, cb) {
+    fetch(API_BASE + "/api/order/" + encodeURIComponent(orderId) + "/status?uid=" + encodeURIComponent(uid))
+      .then(r => r.json()).then(d => {
+        if (d && d.paid) {
+          const add = d.coins || TOPUP_COINS;
+          coins += add; saveWallet(); refreshCoinHUD(); refreshPayBal();
+          payMsg.textContent = "🎉 支付成功，已到账 " + add + " 蛇币！当前余额 " + coins;
+          payNow.disabled = false;
+          if (cb) cb(true);
+        } else if (d && d.exists === false) {
+          payMsg.textContent = "未找到该订单，请重新充值。";
+          payNow.disabled = false;
+          if (cb) cb(false);
+        } else {
+          if (cb) cb(false); // 尚未支付，保留现有提示
+        }
+      }).catch(e => {
+        payMsg.textContent = "查询失败：" + (e && e.message || e) + "（确认后端 API_BASE 已配置且可访问）";
+        payNow.disabled = false;
+        if (cb) cb(false);
+      });
+  }
+
+  payNow.addEventListener("click", () => {
+    if (API_BASE.indexOf("YOUR-PAY-BACKEND") >= 0) {
+      payMsg.textContent = "⚠️ 后端未配置：请把 API_BASE 改成部署好的支付后端公网地址。";
+      return;
+    }
+    payNow.disabled = true;
+    payMsg.textContent = "正在创建订单…";
+    fetch(API_BASE + "/api/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: uid })
+    }).then(r => r.json()).then(d => {
+      if (d && d.payUrl) {
+        localStorage.setItem("snake_last_order", d.outTradeNo);
+        payMsg.textContent = "正在跳转到支付宝…";
+        location.href = d.payUrl; // 跳转支付宝付款
+      } else {
+        payNow.disabled = false;
+        payMsg.textContent = "创建订单失败：" + (d && d.error || "未知错误");
+      }
+    }).catch(e => {
+      payNow.disabled = false;
+      payMsg.textContent = "创建订单失败：" + (e && e.message || e) + "（确认后端已部署且 API_BASE 正确）";
+    });
+  });
+
+  payQuery.addEventListener("click", () => {
+    const oid = localStorage.getItem("snake_last_order");
+    if (!oid) { payMsg.textContent = "没有待查询的订单，请先点「立即充值」。"; return; }
+    payMsg.textContent = "查询中…";
+    grantTopup(oid, function () {});
+  });
+
+  payBtn.addEventListener("click", openPay);
+  closePay.addEventListener("click", closePayFn);
+
+  // 支付宝付款后回跳 ?paid=&uid= → 轮询到账
+  (function handlePayReturn() {
+    const params = new URLSearchParams(location.search);
+    const paid = params.get("paid"); const ruid = params.get("uid");
+    if (!paid || ruid !== uid) return;
+    history.replaceState({}, "", location.pathname); // 清掉 URL 参数
+    if (API_BASE.indexOf("YOUR-PAY-BACKEND") >= 0) {
+      payModal.classList.remove("hidden"); overlay.classList.add("hidden");
+      payAmt.textContent = "¥" + TOPUP_PRICE.toFixed(2); payGet.textContent = "= " + TOPUP_COINS + " 蛇币";
+      refreshPayBal();
+      payMsg.textContent = "⚠️ 后端未配置：无法确认支付，请把 API_BASE 改成部署好的支付后端地址。";
+      return;
+    }
+    payModal.classList.remove("hidden"); overlay.classList.add("hidden");
+    payAmt.textContent = "¥" + TOPUP_PRICE.toFixed(2); payGet.textContent = "= " + TOPUP_COINS + " 蛇币";
+    refreshPayBal();
+    payMsg.textContent = "正在确认支付结果…";
+    let tries = 0; const maxTries = 14, interval = 1500;
+    (function tick() {
+      grantTopup(paid, function (ok) {
+        if (ok) return;
+        if (++tries < maxTries) setTimeout(tick, interval);
+        else payMsg.textContent = "支付结果暂未确认（通知可能有延迟）。若已付款，请点「查询支付结果」。";
+      });
+    })();
+  })();
 
   // ---- 商店分页（皮肤抽奖 / 表情兑换 / 表情抽奖）----
   const tabSkin = document.getElementById("tabSkin");
