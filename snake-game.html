@@ -194,7 +194,7 @@
     </div>
     <div class="overlay" id="overlay">
       <h2 id="ov-title">贪吃蛇大作战</h2>
-      <p id="ov-desc">每局限时 <b>1 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。<b>🎰皮肤抽奖</b> 有 <b>67 款皮肤</b>（颜色/卡通人物/齿轮转盘/影身隐形）！去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送表情：普通5·稀有10·传说20·<b>史诗50</b>·<b>神话100</b> 币，圆盘/齿轮载体、粉/金/蓝各种色、还有「你很菜」嘲讽款。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死。</p>
+      <p id="ov-desc">每局限时 <b>5 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。<b>🎰皮肤抽奖</b> 有 <b>67 款皮肤</b>（颜色/卡通人物/齿轮转盘/影身隐形）！去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送表情：普通5·稀有10·传说20·<b>史诗50</b>·<b>神话100</b> 币，圆盘/齿轮载体、粉/金/蓝各种色、还有「你很菜」嘲讽款。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死。</p>
       <div class="reward" id="reward" style="display:none">
         <div class="big-coin" id="bigCoin"></div>
         <div class="earn" id="earnVal">+0 <small>金币</small></div>
@@ -311,7 +311,7 @@
   const closeGacha = document.getElementById("closeGacha");
 
   // ---- 局时 & 金币 ----
-  const ROUND_TIME = 60;        // 每局秒数
+  const ROUND_TIME = 300;       // 每局秒数（5分钟）
   const TIER_COST = { common: 5, rare: 10, legend: 20, epic: 50, mythic: 100 };
 
   // 皮肤库：颜色(color) / 卡通人物(character) / 特殊(special)
@@ -593,7 +593,7 @@
     cam = { x: player.pts[0].x - canvas.width / 2, y: player.pts[0].y - canvas.height / 2 };
     alive = true; paused = false; boosting = false;
     scoreEl.textContent = 0;
-    roundEndAt = Date.now() + ROUND_TIME * 1000; // 启动本局 1 分钟倒计时
+    roundEndAt = Date.now() + ROUND_TIME * 1000; // 启动本局 5 分钟倒计时
   }
 
   function turnTo(s, target, maxTurn) {
@@ -1197,7 +1197,7 @@
     rewardEl.style.display = "none";
     gachaBtn.style.display = "none";
     timeEl.classList.remove("low");
-    timeEl.textContent = "1:00";
+    timeEl.textContent = "5:00";
     running = true; cancelAnimationFrame(loopId);
     loopId = requestAnimationFrame(loop);
   }
