@@ -1,0 +1,20 @@
+[Unit]
+Description=Snake Game 支付宝充值后端
+After=network.target
+
+[Service]
+Type=simple
+# 改成你在服务器上的实际用户与目录
+User=root
+WorkingDirectory=/opt/snake-pay
+# 密钥从同目录 .env 读取（本服务会读 __dirname/.env）
+EnvironmentFile=/opt/snake-pay/.env
+# node 路径按服务器实际调整：which node
+ExecStart=/usr/local/bin/node /opt/snake-pay/index.js
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
