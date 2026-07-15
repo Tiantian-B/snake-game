@@ -1,0 +1,7 @@
+#!/bin/bash
+# 腾讯云函数 SCF · Web 函数启动脚本
+# SCF 会把公网 HTTP 请求转发到本函数监听的端口（环境变量 PORT，默认 9000）。
+# 部署包里已包含 node_modules（见 deploy-tencent.md），故此处直接启动。
+set -e
+cd /var/user
+exec node index.js
