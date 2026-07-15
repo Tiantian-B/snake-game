@@ -194,7 +194,7 @@
     </div>
     <div class="overlay" id="overlay">
       <h2 id="ov-title">贪吃蛇大作战</h2>
-      <p id="ov-desc">每局限时 <b>5 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。<b>🎰皮肤抽奖</b> 有 <b>67 款皮肤</b>（颜色/卡通人物/齿轮转盘/影身隐形）！去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送表情：普通5·稀有10·传说20·<b>史诗50</b>·<b>神话100</b> 币，圆盘/齿轮载体、粉/金/蓝各种色、还有「你很菜」嘲讽款。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死。</p>
+      <p id="ov-desc">每局限时 <b>5 分钟</b>！移动鼠标 / 手指拖动转向，吃掉满地彩色光球越吃越长、越吃越胖。时间到按长度结算金币（长度=金币）。<b>🎰皮肤抽奖</b> 有 <b>67 款皮肤</b>（颜色/卡通人物/齿轮转盘/影身隐形）！去 <b>😊表情兑换</b> 解锁蛇头表情，去 <b>💬表情抽奖</b> 抽可发送表情：普通5·稀有10·传说20·<b>史诗50</b>·<b>神话100</b> 币，圆盘/齿轮载体、粉/金/蓝各种色、还有「你很菜」嘲讽款。游戏里点右下角 <b>💬</b> 或按 <b>E</b> 发送表情！抽到 <b>🛡️无敌10秒</b> 后开局点左下角按钮激活：撞谁谁死、撞墙也不死！</p>
       <div class="reward" id="reward" style="display:none">
         <div class="big-coin" id="bigCoin"></div>
         <div class="earn" id="earnVal">+0 <small>金币</small></div>
@@ -690,6 +690,13 @@
       if (!a.alive) continue;
       const head = a.pts[0], ar = radiusOf(a);
       if (head.x < 0 || head.x > WORLD.w || head.y < 0 || head.y > WORLD.h) {
+        // 无敌期间：撞墙不死，钳制在边界内并转向朝中心，继续游戏
+        if (a === player && Date.now() < invincibleUntil) {
+          head.x = Math.max(0, Math.min(WORLD.w, head.x));
+          head.y = Math.max(0, Math.min(WORLD.h, head.y));
+          a.desired = Math.atan2(WORLD.h / 2 - head.y, WORLD.w / 2 - head.x);
+          continue;
+        }
         a.alive = false;
         if (a === player) return finishRound("你撞上了边界");
         killToFood(a); continue;
